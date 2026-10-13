@@ -69,6 +69,17 @@ class Workspace(_Model):
     slug: str | None = None
 
 
+class User(_Model):
+    id: str
+    name: str | None = None
+    email: str | None = None
+
+    @property
+    def initials(self) -> str:
+        words = (self.name or self.email or "?").split()
+        return "".join(w[0] for w in words[:2]).upper()
+
+
 class Project(_Model):
     id: str
     workspace_id: str | None = None
@@ -173,6 +184,15 @@ class KaneoClient:
     async def validate_token(self) -> list[Workspace]:
         """Check the credential; works for API keys and session tokens alike."""
         return await self.list_workspaces()
+
+    async def current_user(self) -> User | None:
+        """The user behind a session token; None for an API key, which has no session."""
+        try:
+            data = await self._read("GET", "auth/get-session")
+        except KaneoAuthError:
+            return None
+        user = data.get("user") if isinstance(data, dict) else None
+        return self._parse(User, user) if isinstance(user, dict) else None
 
     async def list_projects(self, workspace_id: str) -> list[Project]:
         data = await self._read(

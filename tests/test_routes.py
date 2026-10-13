@@ -35,6 +35,7 @@ def templates_dir(tmp_path):
 def kaneo():
     with respx.mock(base_url=BASE, assert_all_called=False) as mock:
         mock.get("/workspace").respond(json=WORKSPACES)
+        mock.get("/auth/get-session").respond(json=None)
         yield mock
 
 
@@ -769,8 +770,48 @@ def test_user_mode_signed_in_uses_user_token(user_client, kaneo):
     html = user_client.get("/").text
     assert "Main" in html
     assert 'hx-post="logout"' in html
-    assert auth_headers(kaneo) == ["Bearer user-tok"]
+    assert set(auth_headers(kaneo)) == {"Bearer user-tok"}
     assert "user-tok" not in html
+
+
+def test_user_mode_header_shows_user(user_client, kaneo):
+    kaneo.get("/auth/get-session").respond(
+        json={"session": {"id": "s"}, "user": {"id": "u1", "name": "Ada Lovelace", "email": "a@x"}}
+    )
+    sign_in(user_client)
+    html = user_client.get("/").text
+    assert ">AL</span>" in html
+    assert "Ada Lovelace" in html
+    assert 'title="a@x"' in html
+
+
+def test_user_mode_header_without_session_user(user_client, kaneo):
+    sign_in(user_client)
+    html = user_client.get("/").text
+    assert "bg-avatar" not in html
+    assert 'hx-post="logout"' in html
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        {"status_code": 500, "json": {"message": "boom"}},
+        {"status_code": 401, "json": {"message": "no session"}},
+        {"json": {"user": {"name": "no id"}}},
+    ],
+)
+def test_user_mode_header_ignores_session_errors(user_client, kaneo, reply):
+    kaneo.get("/auth/get-session").respond(**reply)
+    sign_in(user_client)
+    response = user_client.get("/")
+    assert response.status_code == 200
+    assert "Main" in response.text
+    assert "bg-avatar" not in response.text
+
+
+def test_service_mode_does_not_read_the_session(client, kaneo):
+    client.get("/")
+    assert not [c for c in kaneo.calls if c.request.url.path.endswith("get-session")]
 
 
 def test_user_mode_expired_session_clears_cookie(templates_dir):
@@ -819,6 +860,7 @@ def test_user_mode_create_uses_user_token(user_client, kaneo, templates_dir):
 def test_user_mode_create_with_expired_session(templates_dir):
     with respx.mock(base_url=BASE) as mock:
         route = mock.get("/workspace").respond(json=WORKSPACES)
+        mock.get("/auth/get-session").respond(json=None)
         client = make_client(templates_dir, **USER_ENV)
         sign_in(client)
         token = csrf(client)

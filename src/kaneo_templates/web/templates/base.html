@@ -23,6 +23,12 @@
         {{ m.icon("external", "size-3.5") }}<span class="max-sm:sr-only">{{ t("open_kaneo") }}</span>
       </a>
       {% if user_mode and signed_in %}
+        {% if user %}
+          <span class="flex items-center gap-2 px-1.5" title="{{ user.email or '' }}">
+            <span class="flex size-6 items-center justify-center rounded-full border border-avatar-border bg-avatar text-[10px] font-medium text-avatar-foreground" aria-hidden="true">{{ user.initials }}</span>
+            <span class="max-w-40 truncate text-[13px] max-sm:sr-only">{{ user.name or user.email }}</span>
+          </span>
+        {% endif %}
         <form hx-post="logout">
           <input type="hidden" name="csrf_token" value="{{ csrf }}">
           <button type="submit" class="btn btn-outline btn-sm" title="{{ t('signed_in') }}">

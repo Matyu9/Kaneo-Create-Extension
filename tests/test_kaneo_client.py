@@ -494,3 +494,31 @@ async def test_poll_device_token_invalid_grant(anonymous, api):
     with pytest.raises(KaneoError) as exc:
         await anonymous.poll_device_token("kaneo-templates", "dev")
     assert exc.value.code == "invalid_grant"
+
+
+async def test_current_user_from_session(client, api):
+    api.get("/auth/get-session").respond(
+        json={"session": {"id": "s"}, "user": {"id": "u1", "name": "Ada Lovelace", "email": "a@x"}}
+    )
+    user = await client.current_user()
+    assert (user.id, user.name, user.email, user.initials) == ("u1", "Ada Lovelace", "a@x", "AL")
+
+
+@pytest.mark.parametrize("reply", [{"json": None}, {"json": {"session": None}}, {"json": []}])
+async def test_current_user_none_for_api_keys(client, api, reply):
+    api.get("/auth/get-session").respond(**reply)
+    assert await client.current_user() is None
+
+
+async def test_current_user_none_on_401(client, api):
+    api.get("/auth/get-session").respond(401, json={"message": "Unauthorized"})
+    assert await client.current_user() is None
+
+
+async def test_current_user_initials_fallbacks():
+    from kaneo_templates.kaneo_client import User
+
+    assert User(id="1", name="ada").initials == "A"
+    assert User(id="1", name="Jean Paul Sartre").initials == "JP"
+    assert User(id="1", email="bob@example.com").initials == "B"
+    assert User(id="1").initials == "?"

@@ -127,6 +127,15 @@ def _remember_choice(request: Request, response: Response, workspace: str, templ
     )
 
 
+async def _current_user(kaneo: KaneoClient):
+    # Only decorates the header: a failure must not hide the page.
+    try:
+        return await kaneo.current_user()
+    except KaneoError as exc:
+        logger.info("Cannot read the Kaneo session (%s %s)", exc.status, exc.code)
+        return None
+
+
 def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
@@ -145,9 +154,12 @@ async def index(request: Request) -> Response:
     workspaces = []
     kaneo_error = None
     token_rejected = False
+    user = None
     async with _client(request, token) as kaneo:
         try:
             workspaces = await kaneo.list_workspaces()
+            if _user_mode(request):
+                user = await _current_user(kaneo)
         except KaneoAuthError:
             if _user_mode(request):
                 response = _page(request, "login.html", notice="session_expired")
@@ -171,6 +183,7 @@ async def index(request: Request) -> Response:
         request,
         "index.html",
         signed_in=token is not None,
+        user=user,
         workspaces=workspaces,
         kaneo_error=kaneo_error,
         token_rejected=token_rejected,
