@@ -167,7 +167,7 @@ Interface disponible en français et en anglais via un dictionnaire de traductio
 7. Créer les sous-tâches comme des tâches du projet, puis les relier à leur parente par une relation `subtask` (source : parente, cible : sous-tâche).
 8. Retourner un rapport : éléments créés, avertissements, échecs.
 
-En cas d'erreur à mi-parcours, rien n'est supprimé : le projet reste en place et le rapport indique où l'opération s'est arrêtée. Pas de nouvelle tentative automatique des écritures, pour ne pas créer de doublons ; les lectures peuvent être retentées une fois. Exception : une réponse `429` (limite de débit des clés API Kaneo, 100 requêtes par minute) signifie que la requête n'a pas été traitée ; elle est rejouée après le délai `Retry-After`, dans une limite de temps globale.
+En cas d'erreur à mi-parcours, rien n'est supprimé automatiquement : le projet reste en place et le rapport indique où l'opération s'est arrêtée. Un bouton du rapport permet de supprimer le projet incomplet (les labels créés sont conservés). Pas de nouvelle tentative automatique des écritures, pour ne pas créer de doublons ; les lectures peuvent être retentées une fois. Exception : une réponse `429` (limite de débit des clés API Kaneo, 100 requêtes par minute) signifie que la requête n'a pas été traitée ; elle est rejouée après le délai `Retry-After`, dans une limite de temps globale.
 
 ---
 

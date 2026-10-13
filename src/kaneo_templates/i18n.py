@@ -69,6 +69,13 @@ MESSAGES: dict[str, dict[str, str]] = {
         "date_format": "%d/%m/%Y",
         "failed": "Échec",
         "warnings": "Avertissements",
+        "delete_incomplete": "Supprimer le projet incomplet",
+        "delete_hint": "Supprime le projet et ses tâches dans Kaneo. "
+        "Les labels créés sont conservés.",
+        "delete_confirm": "Supprimer ce projet et toutes ses tâches dans Kaneo ?",
+        "delete_not_allowed": "Ce projet ne peut plus être supprimé d'ici. "
+        "Supprimez-le dans Kaneo.",
+        "project_deleted": "Projet supprimé.",
         "error_workspace": "Choisissez un workspace.",
         "error_template": "Modèle inconnu.",
         "error_name": "Le nom du projet est obligatoire.",
@@ -163,6 +170,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "date_format": "%Y-%m-%d",
         "failed": "Failed",
         "warnings": "Warnings",
+        "delete_incomplete": "Delete the incomplete project",
+        "delete_hint": "Deletes the project and its tasks in Kaneo. Created labels are kept.",
+        "delete_confirm": "Delete this project and all its tasks in Kaneo?",
+        "delete_not_allowed": "This project can no longer be deleted from here. "
+        "Delete it in Kaneo.",
+        "project_deleted": "Project deleted.",
         "error_workspace": "Choose a workspace.",
         "error_template": "Unknown template.",
         "error_name": "The project name is required.",

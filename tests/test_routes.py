@@ -521,6 +521,120 @@ def test_create_kaneo_unreachable(templates_dir):
         assert "Impossible de lire les workspaces" in client.post("/create", data=data).text
 
 
+# Deleting an incomplete project
+
+
+def partial_creation(client, kaneo, templates_dir):
+    mock_simple_creation(kaneo).respond(500, json={"message": "boom"})
+    write_simple(templates_dir)
+    token = csrf(client)
+    data = {"csrf_token": token, "workspace_id": "w1", "template": "simple", "name": "X"}
+    html = client.post("/create", data=data).text
+    fields = dict(re.findall(r'name="(project_id|issued|signature)" value="([^"]*)"', html))
+    return token, fields, html
+
+
+def test_partial_failure_offers_deletion(client, kaneo, templates_dir):
+    _, fields, html = partial_creation(client, kaneo, templates_dir)
+    assert "Supprimer le projet incomplet" in html
+    assert 'hx-confirm="Supprimer ce projet' in html
+    assert fields["project_id"] == "p1"
+    assert len(fields["signature"]) == 64
+
+
+def test_successful_creation_offers_no_deletion(client, kaneo, templates_dir):
+    mock_simple_creation(kaneo)
+    write_simple(templates_dir)
+    data = {"csrf_token": csrf(client), "workspace_id": "w1", "template": "simple", "name": "X"}
+    assert 'hx-post="project/delete"' not in client.post("/create", data=data).text
+
+
+def test_delete_incomplete_project(client, kaneo, templates_dir):
+    token, fields, _ = partial_creation(client, kaneo, templates_dir)
+    route = kaneo.delete("/project/p1").respond(json={"id": "p1"})
+    response = client.post("/project/delete", data={"csrf_token": token, **fields})
+    assert "Projet supprimé" in response.text
+    assert route.called
+    assert route.calls.last.request.headers["Authorization"] == f"Bearer {SERVICE_TOKEN}"
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        {"project_id": "other-project"},
+        {"signature": "0" * 64},
+        {"issued": "1"},
+        {"project_id": ""},
+    ],
+)
+def test_delete_requires_a_valid_signature(client, kaneo, templates_dir, tamper):
+    token, fields, _ = partial_creation(client, kaneo, templates_dir)
+    route = kaneo.delete(url__regex=r"/project/.*").respond(json={})
+    response = client.post("/project/delete", data={"csrf_token": token, **fields, **tamper})
+    assert "ne peut plus être supprimé" in response.text
+    assert not route.called
+
+
+def test_delete_signature_expires(client, kaneo, templates_dir, monkeypatch):
+    token, fields, _ = partial_creation(client, kaneo, templates_dir)
+    route = kaneo.delete("/project/p1").respond(json={})
+    later = time.time() + auth.DELETION_TTL + 1
+    monkeypatch.setattr(auth.time, "time", lambda: later)
+    response = client.post("/project/delete", data={"csrf_token": token, **fields})
+    assert "ne peut plus être supprimé" in response.text
+    assert not route.called
+
+
+def test_delete_signature_is_bound_to_the_process(templates_dir, kaneo):
+    first = make_client(templates_dir)
+    token, fields, _ = partial_creation(first, kaneo, templates_dir)
+    second = make_client(templates_dir)
+    second.cookies.set(auth.CSRF_COOKIE, token)
+    response = second.post("/project/delete", data={"csrf_token": token, **fields})
+    assert "ne peut plus être supprimé" in response.text
+
+
+def test_delete_requires_csrf(client, kaneo, templates_dir):
+    _, fields, _ = partial_creation(client, kaneo, templates_dir)
+    route = kaneo.delete("/project/p1").respond(json={})
+    response = client.post("/project/delete", data={"csrf_token": "forged", **fields})
+    assert "Session expirée" in response.text
+    assert not route.called
+
+
+def test_delete_kaneo_error(client, kaneo, templates_dir):
+    token, fields, _ = partial_creation(client, kaneo, templates_dir)
+    kaneo.delete("/project/p1").respond(403, json={"message": "Forbidden", "code": "FORBIDDEN"})
+    response = client.post("/project/delete", data={"csrf_token": token, **fields})
+    assert "Kaneo a renvoyé une erreur" in response.text
+    assert "Forbidden" in response.text
+
+
+def test_delete_with_rejected_service_token(client, kaneo, templates_dir):
+    token, fields, _ = partial_creation(client, kaneo, templates_dir)
+    kaneo.delete("/project/p1").respond(401, json={"message": "no"})
+    response = client.post("/project/delete", data={"csrf_token": token, **fields})
+    assert "KANEO_TOKEN" in response.text
+
+
+def test_delete_in_user_mode_uses_the_user_token(user_client, kaneo, templates_dir):
+    sign_in(user_client, "alice")
+    token, fields, _ = partial_creation(user_client, kaneo, templates_dir)
+    route = kaneo.delete("/project/p1").respond(json={})
+    response = user_client.post("/project/delete", data={"csrf_token": token, **fields})
+    assert "Projet supprimé" in response.text
+    assert route.calls.last.request.headers["Authorization"] == "Bearer alice"
+
+
+def test_delete_in_user_mode_with_expired_session(user_client, kaneo, templates_dir):
+    sign_in(user_client)
+    token, fields, _ = partial_creation(user_client, kaneo, templates_dir)
+    kaneo.delete("/project/p1").respond(401, json={"message": "expired"})
+    response = user_client.post("/project/delete", data={"csrf_token": token, **fields})
+    assert response.headers["HX-Refresh"] == "true"
+    assert is_cleared(response, auth.SESSION_COOKIE)
+
+
 # Last choice
 
 

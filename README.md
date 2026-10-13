@@ -52,7 +52,7 @@ Full reference: [docs/templates.md](docs/templates.md). Examples: [templates-exa
 ## Known limitations
 
 - Public holidays are available for France only (`HOLIDAYS=fr` or `fr-alsace-moselle`).
-- Nothing is rolled back when a creation stops halfway: the report lists what was created and where it stopped.
+- Nothing is rolled back automatically when a creation stops halfway: the report lists what was created and where it stopped, with a button to delete the incomplete project.
 - Templates are edited as files; there is no editor in the interface.
 - Due dates are set at noon UTC; tasks get no assignee.
 

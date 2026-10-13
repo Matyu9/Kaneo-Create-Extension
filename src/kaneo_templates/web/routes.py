@@ -287,12 +287,47 @@ async def create(
         report.subtasks_created,
         len(report.failures),
     )
-    response = _render(request, "_result.html", errors=[], report=report)
+    deletion = None
+    if not report.ok and report.project_id:
+        issued, signature = auth.sign_deletion(request, report.project_id)
+        deletion = {"project_id": report.project_id, "issued": issued, "signature": signature}
+    response = _render(
+        request, "_result.html", errors=[], report=report, deletion=deletion, csrf=csrf_token
+    )
     _remember_choice(request, response, workspace_id, template)
     if report.auth_failed and _user_mode(request):
         # Keep the report on screen; the next request goes to the sign-in page.
         auth.clear_session(request, response)
     return response
+
+
+@router.post("/project/delete", response_class=HTMLResponse)
+async def delete_incomplete_project(
+    request: Request,
+    csrf_token: Annotated[str, Form()] = "",
+    project_id: Annotated[str, Form()] = "",
+    issued: Annotated[int, Form()] = 0,
+    signature: Annotated[str, Form()] = "",
+) -> Response:
+    """Delete a project left incomplete by a creation, from the button of its report."""
+    if not auth.csrf_ok(request, csrf_token):
+        return _render(request, "_deleted.html", error="error_csrf")
+    if not auth.deletion_allowed(request, project_id, issued, signature):
+        return _render(request, "_deleted.html", error="delete_not_allowed")
+    token = auth.kaneo_token(request)
+    if _user_mode(request) and token is None:
+        return _refresh()
+    async with _client(request, token) as kaneo:
+        try:
+            await kaneo.delete_project(project_id)
+        except KaneoAuthError:
+            if _user_mode(request):
+                return _signed_out(request)
+            return _render(request, "_deleted.html", error="token_rejected")
+        except KaneoError as exc:
+            return _render(request, "_deleted.html", error="kaneo_error", detail=exc.message)
+    logger.info("Incomplete project deleted on request")
+    return _render(request, "_deleted.html", error=None)
 
 
 # Sign-in (AUTH_MODE=user)

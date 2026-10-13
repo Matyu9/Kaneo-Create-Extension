@@ -105,3 +105,7 @@ The preview shows the board as it will be created: one lane per column, cards pl
 ## D22. Remembered choices
 
 After each creation, the workspace and template are kept in a `kt_last` cookie (one year, `HttpOnly`, base64url JSON) and preselected on the next visit. They are checked against the current lists, so a removed template or a workspace the user no longer sees falls back to the first template and `KANEO_WORKSPACE_ID`. A cookie rather than browser storage keeps the page free of JavaScript of its own.
+
+## D23. Deleting an incomplete project
+
+After a partial failure, the report offers to delete the project (confirmation dialog, CSRF token). The button carries an HMAC-SHA256 signature of the project id and the time, under a random key generated at start-up, valid one hour. Without it, `POST /project/delete` would let anyone reaching the app delete any project with the service token. A restart invalidates the buttons, which only means deleting the project in Kaneo instead. Labels created by the run are kept, since other projects may use them.

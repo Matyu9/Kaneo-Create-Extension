@@ -35,6 +35,17 @@
           {% if report.auth_failed %}<p class="mt-1">{{ t("session_expired") if user_mode else t("token_rejected") }}</p>{% endif %}
         {% endcall %}
       {% endif -%}
+      {%- if deletion %}
+        <form id="delete-form" hx-post="project/delete" hx-target="#delete-form" hx-swap="outerHTML"
+              hx-confirm="{{ t('delete_confirm') }}" hx-disabled-elt="find button" class="space-y-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}">
+          <input type="hidden" name="project_id" value="{{ deletion.project_id }}">
+          <input type="hidden" name="issued" value="{{ deletion.issued }}">
+          <input type="hidden" name="signature" value="{{ deletion.signature }}">
+          <button type="submit" class="btn btn-outline btn-sm w-full text-destructive-foreground hover:bg-destructive/5">{{ t("delete_incomplete") }}</button>
+          <p class="hint">{{ t("delete_hint") }}</p>
+        </form>
+      {% endif -%}
     </div>
   </div>
 {% endif %}

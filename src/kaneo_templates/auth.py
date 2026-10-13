@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
+import hmac
 import json
 import secrets
 import time
@@ -59,6 +61,8 @@ def _basic_auth_ok(header: str | None, user: str, password: str) -> bool:
 
 
 def install(app: FastAPI, settings: Settings) -> None:
+    # Signs the "delete this incomplete project" buttons; a restart invalidates them.
+    app.state.signing_key = secrets.token_bytes(32)
     if settings.auth_mode is AuthMode.USER and settings.secret_key is not None:
         app.state.cipher = CookieCipher(settings.secret_key)
 
@@ -198,3 +202,23 @@ def set_csrf_cookie(request: Request, response: Response, value: str) -> None:
 def csrf_ok(request: Request, submitted: str) -> bool:
     cookie = request.cookies.get(CSRF_COOKIE, "")
     return bool(cookie) and secrets.compare_digest(cookie, submitted)
+
+
+# Signed actions
+
+
+DELETION_TTL = 3600
+
+
+def sign_deletion(request: Request, project_id: str, issued: int | None = None) -> tuple[int, str]:
+    """Signature allowing the deletion of a project this app has just created."""
+    issued = int(time.time()) if issued is None else issued
+    message = f"delete:{project_id}:{issued}".encode()
+    return issued, hmac.new(request.app.state.signing_key, message, hashlib.sha256).hexdigest()
+
+
+def deletion_allowed(request: Request, project_id: str, issued: int, signature: str) -> bool:
+    if not project_id or not 0 <= time.time() - issued <= DELETION_TTL:
+        return False
+    _, expected = sign_deletion(request, project_id, issued)
+    return hmac.compare_digest(expected, signature)

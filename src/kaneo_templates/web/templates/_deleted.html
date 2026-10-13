@@ -1,0 +1,6 @@
+{% import "_macros.html" as m %}
+{% if error %}
+  {% call m.alert("error") %}{{ t(error) }}{% if detail %}<p class="mt-1 font-mono text-xs">{{ detail }}</p>{% endif %}{% endcall %}
+{% else %}
+  {% call m.alert("success") %}{{ t("project_deleted") }}{% endcall %}
+{% endif %}
