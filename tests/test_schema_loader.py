@@ -438,3 +438,56 @@ def test_error_paths_use_brackets_for_indexes():
     with pytest.raises(TemplateError) as exc:
         parse_template(body)
     assert str(exc.value).startswith("tasks[0].subtasks[0].dues: ")
+
+
+# Start date
+
+
+def test_start_date_section():
+    t = parse_template(
+        tpl(
+            """\
+            version: 1
+            name: X
+            start_date:
+              label: Début
+            end_date:
+              required: false
+            tasks:
+              - title: "Lancement {{start_date}}"
+                due: start
+              - title: Fin
+                due: -1d
+            """
+        )
+    )
+    assert t.start_date.label == "Début"
+    assert t.start_date_required
+    assert not t.end_date_required
+    assert t.tasks[0].due == Offset(0, "d", "start")
+
+
+def test_start_date_shorthand():
+    t = parse_template(
+        "version: 1\nname: X\nstart_date:\ntasks:\n  - title: A\n    due: start+1d\n"
+    )
+    assert t.start_date_required
+
+
+def test_start_offset_requires_start_date():
+    body = "version: 1\nname: X\nend_date:\ntasks:\n  - title: A\n    due: start+1d\n"
+    with pytest.raises(
+        TemplateError, match=r"tasks\[0\]: a 'start' offset requires a 'start_date'"
+    ):
+        parse_template(body)
+
+
+def test_end_offset_with_only_a_start_date():
+    body = "version: 1\nname: X\nstart_date:\ntasks:\n  - title: A\n    due: -1d\n"
+    with pytest.raises(TemplateError, match=r"'due' requires an 'end_date' section"):
+        parse_template(body)
+
+
+def test_start_date_variable_requires_section():
+    with pytest.raises(TemplateError, match=r"\{\{start_date\}\} requires a 'start_date'"):
+        parse_template("version: 1\nname: X\ntasks:\n  - title: 'Le {{start_date}}'\n")

@@ -7,7 +7,7 @@ Créez un projet [Kaneo](https://github.com/usekaneo/kaneo) et ses tâches préd
 ![Le formulaire et la prévisualisation du tableau](docs/images/preview.png)
 
 - Choisissez un workspace, un modèle, un nom et une date de fin ; la prévisualisation montre le tableau tel que Kaneo le créera.
-- Échéances avant et après la date de fin : `-30d`, `-5b` (jours ouvrés), `+3d`, `J-7`…
+- Échéances avant et après la date de fin (`-30d`, `-5b` en jours ouvrés, `+3d`, `J-7`…) ou depuis une date de début facultative (`start+2d`).
 - Colonnes personnalisées, priorités, labels (créés s'ils manquent) et sous-tâches.
 - Deux modes de connexion : un compte de service, ou chaque utilisateur avec son propre compte Kaneo (device flow).
 - Un petit conteneur, sans base de données, interface en français et en anglais, thèmes clair et sombre.

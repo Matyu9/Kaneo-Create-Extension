@@ -7,7 +7,7 @@ Create a [Kaneo](https://github.com/usekaneo/kaneo) project with its predefined 
 ![The form and the board preview](docs/images/preview.png)
 
 - Pick a workspace, a template, a project name and an end date; the preview shows the board as Kaneo will create it.
-- Due dates before and after the end date: `-30d`, `-5b` (business days), `+3d`, `J-7`…
+- Due dates before and after the end date (`-30d`, `-5b` in business days, `+3d`, `J-7`…) or from an optional start date (`start+2d`).
 - Custom columns, priorities, labels (created when missing) and subtasks.
 - Two sign-in modes: one service account, or each user with their own Kaneo account (device flow).
 - One small container, no database, English and French interface, light and dark themes.

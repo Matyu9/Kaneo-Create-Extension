@@ -109,3 +109,7 @@ After each creation, the workspace and template are kept in a `kt_last` cookie (
 ## D23. Deleting an incomplete project
 
 After a partial failure, the report offers to delete the project (confirmation dialog, CSRF token). The button carries an HMAC-SHA256 signature of the project id and the time, under a random key generated at start-up, valid one hour. Without it, `POST /project/delete` would let anyone reaching the app delete any project with the service token. A restart invalidates the buttons, which only means deleting the project in Kaneo instead. Labels created by the run are kept, since other projects may use them.
+
+## D24. Start date
+
+`start_date` is a second, optional anchor with the same keys as `end_date`. Offsets relative to it are written `start`, `start+Nd` or `start-Nb`, so existing templates keep their meaning (a bare offset is relative to the end date). Each anchor needs its section; the preview warns when the start date is after the end date or when a needed date is missing. The tasks' Kaneo `startDate` field is not set: the start date only computes due dates.

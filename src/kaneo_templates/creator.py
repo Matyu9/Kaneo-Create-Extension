@@ -61,11 +61,21 @@ class Plan:
         return [i for i in self.items if i.is_subtask]
 
 
+@dataclass(frozen=True)
+class _PlanContext:
+    end: date | None
+    start: date | None
+    today: date
+    values: dict[str, str]
+    holidays: HolidayCalendar
+
+
 def build_plan(
     template: Template,
     end_date: date | None,
     today: date,
     *,
+    start_date: date | None = None,
     project_name: str = "",
     date_format: str = "%d/%m/%Y",
     holidays: HolidayCalendar = NO_HOLIDAYS,
@@ -73,49 +83,53 @@ def build_plan(
     columns = list(template.columns) if template.columns else list(KANEO_DEFAULT_COLUMNS)
     items: list[PlannedItem] = []
     warnings: list[str] = []
-    values = {
-        "project_name": project_name,
-        "end_date": end_date.strftime(date_format) if end_date else "",
-    }
+    context = _PlanContext(
+        end=end_date,
+        start=start_date,
+        today=today,
+        values={
+            "project_name": project_name,
+            "end_date": end_date.strftime(date_format) if end_date else "",
+            "start_date": start_date.strftime(date_format) if start_date else "",
+        },
+        holidays=holidays,
+    )
     for i, task in enumerate(template.tasks):
-        parent = _planned(f"tasks[{i}]", task, None, end_date, today, values, holidays)
+        parent = _planned(f"tasks[{i}]", task, None, context)
         items.append(parent)
         parent_index = len(items) - 1
         for j, sub in enumerate(task.subtasks):
-            child = _planned(
-                f"tasks[{i}].subtasks[{j}]", sub, parent_index, end_date, today, values, holidays
-            )
+            child = _planned(f"tasks[{i}].subtasks[{j}]", sub, parent_index, context)
             if child.column is None:
                 child.column = parent.column
             items.append(child)
-    if end_date is None and any(spec.due is not None for _, spec in template.iter_items()):
+    anchors = {spec.due.anchor for _, spec in template.iter_items() if spec.due is not None}
+    if end_date is None and "end" in anchors:
         warnings.append("no_end_date")
+    if start_date is None and "start" in anchors:
+        warnings.append("no_start_date")
+    if start_date is not None and end_date is not None and start_date > end_date:
+        warnings.append("start_after_end")
     if any(item.past for item in items):
         warnings.append("past_dates")
     return Plan(columns, template.columns is not None, items, warnings)
 
 
 def _planned(
-    path: str,
-    spec: SubtaskSpec,
-    parent: int | None,
-    end: date | None,
-    today: date,
-    values: dict[str, str],
-    holidays: HolidayCalendar,
+    path: str, spec: SubtaskSpec, parent: int | None, context: _PlanContext
 ) -> PlannedItem:
-    due = compute_due(end, spec.due, holidays)
+    due = compute_due(context.end, spec.due, context.holidays, context.start)
     return PlannedItem(
         path=path,
-        title=render_text(spec.title, values),
-        description=render_text(spec.description, values) if spec.description else None,
+        title=render_text(spec.title, context.values),
+        description=render_text(spec.description, context.values) if spec.description else None,
         priority=spec.priority,
         column=spec.column,
         labels=list(spec.labels),
         due=due,
         weekend=due is not None and is_weekend(due),
-        holiday=holidays.name(due) if due is not None else None,
-        past=due is not None and due < today,
+        holiday=context.holidays.name(due) if due is not None else None,
+        past=due is not None and due < context.today,
         parent_index=parent,
     )
 

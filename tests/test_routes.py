@@ -378,6 +378,80 @@ def test_template_fields_required_date(client):
     assert "required" in html
 
 
+STARTED = """\
+version: 1
+name: Started
+start_date:
+  label: Début des répétitions
+end_date:
+tasks:
+  - title: Première répétition
+    due: start
+  - title: Filage
+    due: -2d
+"""
+
+
+def test_template_fields_with_start_date(client, templates_dir):
+    (templates_dir / "started.yml").write_text(STARTED)
+    html = client.get("/template-fields", params={"template": "started"}).text
+    assert html.index('id="start_date"') < html.index('id="end_date"')
+    assert "Début des répétitions" in html
+
+
+def test_index_with_default_start_date_label(client, templates_dir):
+    (templates_dir / "aaa.yml").write_text(
+        "version: 1\nname: A\nstart_date:\n  required: false\ntasks: []\n"
+    )
+    html = client.get("/").text
+    assert "Date de début" in html
+    assert "facultatif" in html
+
+
+def test_preview_with_start_date(client, templates_dir):
+    (templates_dir / "started.yml").write_text(STARTED)
+    params = {"template": "started", "start_date": "2026-03-06", "end_date": "2026-03-20"}
+    html = client.get("/preview", params=params).text
+    assert "06/03/2026" in html
+    assert "18/03/2026" in html
+    params["end_date"] = "2026-03-01"
+    assert "postérieure à la date de fin" in client.get("/preview", params=params).text
+
+
+@pytest.mark.parametrize(
+    "start, message",
+    [("", "date de début est obligatoire"), ("06/03/2026", "Date de début invalide")],
+)
+def test_create_validates_start_date(client, kaneo, templates_dir, start, message):
+    (templates_dir / "started.yml").write_text(STARTED)
+    data = {
+        "csrf_token": csrf(client),
+        "workspace_id": "w1",
+        "template": "started",
+        "name": "X",
+        "end_date": "2026-03-20",
+        "start_date": start,
+    }
+    assert message in client.post("/create", data=data).text
+    assert all(c.request.method == "GET" for c in kaneo.calls)
+
+
+def test_create_with_start_date(client, kaneo, templates_dir):
+    route = mock_simple_creation(kaneo)
+    (templates_dir / "started.yml").write_text(STARTED)
+    data = {
+        "csrf_token": csrf(client),
+        "workspace_id": "w1",
+        "template": "started",
+        "name": "X",
+        "end_date": "2026-03-20",
+        "start_date": "2026-03-06",
+    }
+    assert "Projet créé" in client.post("/create", data=data).text
+    due_dates = [json.loads(c.request.content)["dueDate"] for c in route.calls]
+    assert due_dates == ["2026-03-06T12:00:00.000Z", "2026-03-18T12:00:00.000Z"]
+
+
 def test_template_fields_unknown_template(client):
     response = client.get("/template-fields", params={"template": "../x"})
     assert response.status_code == 200

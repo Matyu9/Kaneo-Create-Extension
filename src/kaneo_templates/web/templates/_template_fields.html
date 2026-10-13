@@ -1,11 +1,13 @@
+{% macro date_field(id, spec, value, default_label) -%}
+  <div class="space-y-2">
+    <label class="label" for="{{ id }}">{{ spec.label or default_label }}
+      <span class="hint">({{ t("required") if spec.required else t("optional") }})</span></label>
+    <input class="input" type="date" id="{{ id }}" name="{{ id }}" value="{{ value }}" {% if spec.required %}required{% endif %}
+           hx-get="preview" hx-include="#create-form" hx-target="#preview" hx-trigger="change">
+  </div>
+{%- endmacro %}
 {% if selected %}
   {% if selected.description %}<p class="-mt-2 text-xs text-muted-foreground">{{ selected.description }}</p>{% endif %}
-  {% if selected.end_date %}
-    <div class="space-y-2">
-      <label class="label" for="end_date">{{ selected.end_date.label or t("end_date") }}
-        <span class="hint">({{ t("required") if selected.end_date.required else t("optional") }})</span></label>
-      <input class="input" type="date" id="end_date" name="end_date" value="{{ end_date }}" {% if selected.end_date.required %}required{% endif %}
-             hx-get="preview" hx-include="#create-form" hx-target="#preview" hx-trigger="change">
-    </div>
-  {% endif %}
+  {% if selected.start_date %}{{ date_field("start_date", selected.start_date, start_date, t("start_date")) }}{% endif %}
+  {% if selected.end_date %}{{ date_field("end_date", selected.end_date, end_date, t("end_date")) }}{% endif %}
 {% endif %}

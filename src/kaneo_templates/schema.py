@@ -66,7 +66,7 @@ LabelColor = Annotated[str, BeforeValidator(_parse_color)]
 
 # Placeholders allowed in task titles and descriptions. Substitution is plain text
 # replacement, never template evaluation.
-VARIABLES = ("project_name", "end_date")
+VARIABLES = ("project_name", "end_date", "start_date")
 _VARIABLE = re.compile(r"\{\{\s*([^{}]*?)\s*\}\}")
 
 
@@ -77,6 +77,10 @@ def render_text(text: str, values: dict[str, str]) -> str:
 
 def _variables(text: str | None) -> list[str]:
     return _VARIABLE.findall(text) if text else []
+
+
+def _section(name: str) -> str:
+    return f"{'an' if name[0] in 'aeiou' else 'a'} '{name}' section"
 
 
 class _Strict(BaseModel):
@@ -96,7 +100,7 @@ class TaskSpec(SubtaskSpec):
     subtasks: list[SubtaskSpec] = Field(default_factory=list)
 
 
-class EndDateSpec(_Strict):
+class DateFieldSpec(_Strict):
     required: bool = True
     label: NonEmptyStr | None = None
 
@@ -105,7 +109,8 @@ class Template(_Strict):
     version: int
     name: NonEmptyStr
     description: str | None = None
-    end_date: EndDateSpec | None = None
+    end_date: DateFieldSpec | None = None
+    start_date: DateFieldSpec | None = None
     columns: list[NonEmptyStr] | None = None
     labels: dict[NonEmptyStr, LabelColor] = Field(default_factory=dict)
     tasks: list[TaskSpec] = Field(default_factory=list)
@@ -118,9 +123,9 @@ class Template(_Strict):
             raise ValueError(f"unsupported template version (supported: {supported})")
         return value
 
-    @field_validator("end_date", mode="before")
+    @field_validator("end_date", "start_date", mode="before")
     @classmethod
-    def _end_date_shorthand(cls, value: object) -> object:
+    def _date_shorthand(cls, value: object) -> object:
         # `end_date: {}` or a bare `end_date:` key both mean "date field with defaults".
         return {} if value is None else value
 
@@ -154,10 +159,13 @@ class Template(_Strict):
                     raise ValueError(
                         f"{path}: unknown variable (available: {', '.join(VARIABLES)})"
                     )
-                if name == "end_date" and self.end_date is None:
-                    raise ValueError(f"{path}: {{{{end_date}}}} requires an 'end_date' section")
-            if item.due is not None and self.end_date is None:
-                raise ValueError(f"{path}: 'due' requires an 'end_date' section in the template")
+                if name in ("end_date", "start_date") and getattr(self, name) is None:
+                    raise ValueError(f"{path}: {{{{{name}}}}} requires {_section(name)}")
+            if item.due is not None:
+                section = f"{item.due.anchor}_date"
+                if getattr(self, section) is None:
+                    what = "'due'" if item.due.anchor == "end" else "a 'start' offset"
+                    raise ValueError(f"{path}: {what} requires {_section(section)} in the template")
             if (
                 known_slugs is not None
                 and item.column is not None
@@ -176,6 +184,10 @@ class Template(_Strict):
     @property
     def end_date_required(self) -> bool:
         return self.end_date is not None and self.end_date.required
+
+    @property
+    def start_date_required(self) -> bool:
+        return self.start_date is not None and self.start_date.required
 
     def label_color(self, name: str) -> str | None:
         """Color set for a label in the `labels` section, if any."""

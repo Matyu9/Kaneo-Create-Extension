@@ -50,6 +50,7 @@ More examples in [`templates-examples/`](../templates-examples).
 | `name` | yes | Shown in the template list. |
 | `description` | no | Shown under the template list. |
 | `end_date` | no | The date the `due` offsets are computed from. See below. |
+| `start_date` | no | A second date, for offsets written `start+2d`. Same keys as `end_date`. |
 | `columns` | no | Board columns, in order. See below. |
 | `labels` | no | Colors of the labels the template creates. See below. |
 | `tasks` | no | The tasks, in creation order. A template without tasks is valid. |
@@ -61,7 +62,27 @@ More examples in [`templates-examples/`](../templates-examples).
 | `required` | `true` | `true`: the date must be entered. `false`: without a date, tasks are created without due date. |
 | `label` | "End date" | Label of the date field. |
 
-`end_date:` with no value means `required: true`. Without `end_date`, no task may have a `due`.
+`end_date:` with no value means `required: true`. Without `end_date`, no task may have a `due` relative to the end date.
+
+### `start_date`
+
+Same keys as `end_date` (`required`, default `true`, and `label`, default "Start date"). It adds a start date field to the form; offsets written `start…` are computed from it:
+
+```yaml
+start_date:
+  label: First rehearsal
+end_date:
+  label: Concert
+tasks:
+  - title: Hand out the scores
+    due: start
+  - title: First full run
+    due: start+10b
+  - title: Dress rehearsal
+    due: -2d
+```
+
+The preview warns when the start date is after the end date.
 
 ### `columns`
 
@@ -104,6 +125,7 @@ Titles and descriptions may contain placeholders, replaced when the project is c
 |---|---|
 | `{{project_name}}` | The project name entered in the form |
 | `{{end_date}}` | The end date (`24/03/2027` in French, `2027-03-24` in English), or nothing when no date was entered |
+| `{{start_date}}` | The start date, in the same format |
 
 ```yaml
 tasks:
@@ -111,7 +133,7 @@ tasks:
     description: "Meeting of {{end_date}}"
 ```
 
-Spaces inside the braces are allowed (`{{ end_date }}`). Any other name is rejected when the template loads, and `{{end_date}}` requires an `end_date` section. Quote titles that start with `{`: YAML reads them as mappings otherwise.
+Spaces inside the braces are allowed (`{{ end_date }}`). Any other name is rejected when the template loads; `{{end_date}}` and `{{start_date}}` require the matching section. Quote titles that start with `{`: YAML reads them as mappings otherwise.
 
 ## `due` syntax
 
@@ -121,6 +143,7 @@ Spaces inside the braces are allowed (`{{ end_date }}`). Any other name is rejec
 | `0d` | the end date itself |
 | `-5b` / `+2b` | 5 business days before / 2 after (Monday to Friday, minus the public holidays of `HOLIDAYS` when set) |
 | `J-7` / `J+3` / `J0` | aliases of `-7d` / `+3d` / `0d` |
+| `start` / `start+2d` / `start-1b` | the start date / 2 calendar days after it / 1 business day before it (needs `start_date`) |
 
 - A sign is required for non-zero offsets: `7d` is rejected.
 - Offsets have at most 4 digits.

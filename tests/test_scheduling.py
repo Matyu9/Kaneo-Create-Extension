@@ -120,3 +120,55 @@ def test_is_weekend():
 
 def test_to_kaneo_datetime():
     assert to_kaneo_datetime(date(2026, 2, 3)) == "2026-02-03T12:00:00.000Z"
+
+
+# Start-anchored offsets
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("start", Offset(0, "d", "start")),
+        ("START", Offset(0, "d", "start")),
+        ("start+2d", Offset(2, "d", "start")),
+        ("start-3b", Offset(-3, "b", "start")),
+        ("start+0d", Offset(0, "d", "start")),
+        (" start+10d ", Offset(10, "d", "start")),
+    ],
+)
+def test_parse_start_offsets(value, expected):
+    assert parse_due(value) == expected
+
+
+@pytest.mark.parametrize("value", ["start2d", "start+", "starting", "start J-7", "start+7", "s+2d"])
+def test_parse_invalid_start_offsets(value):
+    with pytest.raises(DueSyntaxError):
+        parse_due(value)
+
+
+@pytest.mark.parametrize(
+    "offset, text",
+    [
+        (Offset(-7), "-7d"),
+        (Offset(0), "0d"),
+        (Offset(2, "d", "start"), "start+2d"),
+        (Offset(-1, "b", "start"), "start-1b"),
+        (Offset(0, "d", "start"), "start"),
+    ],
+)
+def test_offset_str_with_anchor(offset, text):
+    assert str(offset) == text
+
+
+def test_compute_due_uses_the_offset_anchor():
+    start, end = date(2026, 3, 2), date(2026, 3, 20)
+    assert compute_due(end, parse_due("start+2d"), start=start) == date(2026, 3, 4)
+    assert compute_due(end, parse_due("start"), start=start) == start
+    assert compute_due(end, parse_due("-2d"), start=start) == date(2026, 3, 18)
+    # Business days from a Monday start, backwards: the previous Friday.
+    assert compute_due(end, parse_due("start-1b"), start=start) == date(2026, 2, 27)
+
+
+def test_compute_due_without_its_anchor():
+    assert compute_due(date(2026, 3, 20), parse_due("start+2d")) is None
+    assert compute_due(None, parse_due("-2d"), start=date(2026, 3, 2)) is None

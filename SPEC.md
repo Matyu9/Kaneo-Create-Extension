@@ -131,6 +131,7 @@ Syntaxe de `due` :
 - `-7d` : 7 jours calendaires avant la date de fin. `+3d` : 3 jours après. `0d` : le jour même.
 - `-5b` / `+2b` : jours ouvrés (lundi à vendredi), hors jours fériés du calendrier choisi par `HOLIDAYS` (`fr`, `fr-alsace-moselle`) ; sans jours fériés si la variable est vide.
 - Les formes `J-7` et `J+3` sont acceptées comme alias.
+- `start`, `start+2d`, `start-1b` : décalage par rapport à la date de début, si le modèle a une section `start_date` (mêmes clés que `end_date`).
 
 Règles de calcul :
 
@@ -274,7 +275,6 @@ Critère de fin de v1 : depuis une instance Kaneo vierge, un utilisateur lance l
 
 - Éditeur de modèles dans l'UI, import et export de modèles.
 - Calendriers de jours fériés d'autres pays.
-- Date de début de projet comme second point d'ancrage.
 - Attribution des tâches par rôle, associée à des membres choisis à la création.
 - Connexion OIDC directe.
 - Création depuis un projet existant (« enregistrer comme modèle »).

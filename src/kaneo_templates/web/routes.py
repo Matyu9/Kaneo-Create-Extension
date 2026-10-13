@@ -26,6 +26,7 @@ from kaneo_templates.holidays import HolidayCalendar
 from kaneo_templates.i18n import translator
 from kaneo_templates.kaneo_client import KaneoAuthError, KaneoClient, KaneoError
 from kaneo_templates.loader import LoadResult, load_templates
+from kaneo_templates.schema import DateFieldSpec
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,20 @@ async def _current_user(kaneo: KaneoClient):
         return None
 
 
+def _read_date(
+    raw: str, spec: DateFieldSpec | None, errors: list[str], missing: str, invalid: str
+) -> date | None:
+    """Validate a date field of the form against its template section."""
+    if spec is None:
+        return None
+    value = _parse_date(raw)
+    if raw and value is None:
+        errors.append(invalid)
+    elif value is None and spec.required:
+        errors.append(missing)
+    return value
+
+
 def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
@@ -193,6 +208,7 @@ async def index(request: Request) -> Response:
         selected=loaded.get(selected_id) if selected_id else None,
         selected_workspace=selected_workspace,
         end_date="",
+        start_date="",
     )
 
 
@@ -201,11 +217,18 @@ async def template_fields(
     request: Request,
     template: Annotated[str, Query()] = "",
     end_date: Annotated[str, Query()] = "",
+    start_date: Annotated[str, Query()] = "",
 ) -> Response:
     if _user_mode(request) and auth.kaneo_token(request) is None:
         return _refresh()
     selected = _templates(request).get(template)
-    response = _render(request, "_template_fields.html", selected=selected, end_date=end_date)
+    response = _render(
+        request,
+        "_template_fields.html",
+        selected=selected,
+        end_date=end_date,
+        start_date=start_date,
+    )
     response.headers["HX-Trigger"] = "refresh-preview"
     return response
 
@@ -215,6 +238,7 @@ async def preview(
     request: Request,
     template: Annotated[str, Query()] = "",
     end_date: Annotated[str, Query()] = "",
+    start_date: Annotated[str, Query()] = "",
     name: Annotated[str, Query()] = "",
 ) -> Response:
     if _user_mode(request) and auth.kaneo_token(request) is None:
@@ -223,8 +247,16 @@ async def preview(
     if selected is None:
         return _render(request, "_preview.html", plan=None)
     end = _parse_date(end_date) if selected.end_date else None
+    start = _parse_date(start_date) if selected.start_date else None
     name = name.strip()[:MAX_NAME_LENGTH]
-    plan = build_plan(selected, end, date.today(), project_name=name, **_plan_options(request))
+    plan = build_plan(
+        selected,
+        end,
+        date.today(),
+        start_date=start,
+        project_name=name,
+        **_plan_options(request),
+    )
     return _render(
         request,
         "_preview.html",
@@ -244,6 +276,7 @@ async def create(
     template: Annotated[str, Form()] = "",
     name: Annotated[str, Form()] = "",
     end_date: Annotated[str, Form()] = "",
+    start_date: Annotated[str, Form()] = "",
 ) -> Response:
     settings = _settings(request)
     if not auth.csrf_ok(request, csrf_token):
@@ -259,13 +292,12 @@ async def create(
     name = name.strip()
     if not name or len(name) > MAX_NAME_LENGTH:
         errors.append("error_name")
-    end: date | None = None
-    if selected is not None and selected.end_date is not None:
-        end = _parse_date(end_date)
-        if end_date and end is None:
-            errors.append("error_date_format")
-        elif end is None and selected.end_date_required:
-            errors.append("error_date")
+    end = start = None
+    if selected is not None:
+        end = _read_date(end_date, selected.end_date, errors, "error_date", "error_date_format")
+        start = _read_date(
+            start_date, selected.start_date, errors, "error_start_date", "error_start_date_format"
+        )
 
     async with _client(request, token) as kaneo:
         try:
@@ -287,7 +319,14 @@ async def create(
         if errors or selected is None:
             return _render(request, "_result.html", errors=errors, report=None)
 
-        plan = build_plan(selected, end, date.today(), project_name=name, **_plan_options(request))
+        plan = build_plan(
+            selected,
+            end,
+            date.today(),
+            start_date=start,
+            project_name=name,
+            **_plan_options(request),
+        )
         report = await Creator(kaneo, settings.kaneo_public_url).run(
             workspace_id, selected, name, plan
         )

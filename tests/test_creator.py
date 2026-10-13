@@ -492,3 +492,50 @@ def test_plan_flags_holidays():
         (date(2026, 5, 8), "victory_day"),
         (date(2026, 5, 13), None),  # Thursday 14 May is Ascension
     ]
+
+
+STARTED = parse_template(
+    """\
+version: 1
+name: Started
+start_date:
+end_date:
+tasks:
+  - title: "Kick-off {{start_date}}"
+    due: start
+  - title: First check
+    due: start+2b
+  - title: Wrap-up
+    due: -1d
+"""
+)
+
+
+def test_plan_with_start_and_end_dates():
+    plan = build_plan(STARTED, date(2026, 3, 20), date(2026, 1, 1), start_date=date(2026, 3, 6))
+    assert [(i.title, i.due) for i in plan.items] == [
+        ("Kick-off 06/03/2026", date(2026, 3, 6)),
+        ("First check", date(2026, 3, 10)),
+        ("Wrap-up", date(2026, 3, 19)),
+    ]
+    assert plan.warnings == []
+
+
+def test_plan_without_start_date_warns():
+    plan = build_plan(STARTED, date(2026, 3, 20), date(2026, 1, 1))
+    assert plan.warnings == ["no_start_date"]
+    assert [i.due for i in plan.items] == [None, None, date(2026, 3, 19)]
+    assert plan.items[0].title == "Kick-off "
+
+
+def test_plan_start_after_end_warns():
+    plan = build_plan(STARTED, date(2026, 3, 1), date(2026, 1, 1), start_date=date(2026, 3, 6))
+    assert "start_after_end" in plan.warnings
+
+
+def test_plan_end_warning_only_for_end_offsets():
+    template = parse_template(
+        "version: 1\nname: S\nstart_date:\nend_date:\n  required: false\n"
+        "tasks:\n  - title: A\n    due: start+1d\n"
+    )
+    assert build_plan(template, None, date(2026, 1, 1), start_date=date(2026, 3, 6)).warnings == []
