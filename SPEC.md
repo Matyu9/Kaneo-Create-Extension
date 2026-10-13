@@ -20,7 +20,7 @@ Hors périmètre v1 : éditeur de modèles dans l'UI, historique des créations,
 ## 2. Stack
 
 - Python 3.13, FastAPI, Jinja2, HTMX (servi en local, pas de CDN), httpx, pydantic v2, PyYAML.
-- Pas de build front. CSS minimal écrit à la main, thème clair/sombre selon `prefers-color-scheme`.
+- Pas de build front à l'exécution. CSS généré avec Tailwind CSS v4 (CLI autonome via `pytailwindcss`, `scripts/build-css.sh`) et versionné ; jetons de thème repris de l'interface Kaneo, police Geist servie en local, thème clair/sombre selon `prefers-color-scheme`.
 - Conteneur `python:3.13-slim`, utilisateur non-root, un seul process uvicorn.
 - Gestion des dépendances avec `uv` et `pyproject.toml`.
 - Tests : pytest, respx (mock httpx), ruff pour le lint et le format.
@@ -146,7 +146,7 @@ Page unique `/`, rendue côté serveur, enrichie avec HTMX.
 2. Sélecteur de modèle, avec sa description.
 3. Champ nom du projet.
 4. Champ date de fin, affiché selon le modèle choisi, avec le libellé et le caractère obligatoire définis par le modèle.
-5. Prévisualisation, mise à jour à chaque changement : liste des colonnes puis des tâches (sous-tâches indentées) avec leur échéance calculée, les jours de week-end et les dates passées signalés.
+5. Prévisualisation, mise à jour à chaque changement : le tableau tel que Kaneo le créera (une colonne par liste, une carte par tâche ou sous-tâche, numérotée dans l'ordre de création), avec l'échéance calculée, la priorité, les labels, le lien de sous-tâche, les jours de week-end et les dates passées signalés.
 6. Bouton « Créer le projet ».
 7. Résultat : lien vers le projet dans Kaneo, nombre de tâches créées, et en cas d'échec partiel la liste de ce qui a été créé et de ce qui a échoué.
 
@@ -205,8 +205,11 @@ kaneo-templates/
     i18n.py
     web/
       routes.py
+      tailwind.css
       templates/
       static/
+  scripts/
+    build-css.sh
   templates-examples/
     evenement.yml
     reunion-ca.yml
@@ -216,11 +219,13 @@ kaneo-templates/
     kaneo-api-notes.md
     templates.md
     deployment.md
+    decisions.md
   Dockerfile
   docker-compose.example.yml
   .env.example
   pyproject.toml
   README.md
+  README.fr.md
   LICENSE
   SPEC.md
   .github/workflows/ci.yml

@@ -62,7 +62,7 @@ A subtask without `column` goes to its parent's column.
 
 ## D13. `SECRET_KEY`
 
-At least 32 characters, any content. The Fernet key will be derived from it (step 6), so users do not need to generate a Fernet-formatted key.
+At least 32 characters, any content. The Fernet key is derived from it with HKDF-SHA256 (D18), so users do not need to generate a Fernet-formatted key.
 
 ## D14. Creation order and stop on failure
 
@@ -74,8 +74,26 @@ Top-level tasks are created first, in template order, then subtasks, each one li
 
 ## D16. CSRF before step 6
 
-Double-submit token: a random value in an `HttpOnly`, `SameSite=Lax` cookie, repeated in a hidden form field and compared in constant time. Step 6 may replace it with a token signed with `SECRET_KEY`.
+Double-submit token: a random value in an `HttpOnly`, `SameSite=Lax` cookie, repeated in a hidden form field and compared in constant time. Kept as is in step 6: it covers both modes, including `service` mode where there is no `SECRET_KEY`.
 
 ## D17. HTMX
 
 htmx 2.0.11 is vendored in `src/kaneo_templates/web/static/htmx.min.js` (0BSD licence). Its inline indicator styles are disabled (`htmx-config` meta) so that the CSP can forbid inline styles.
+
+## D18. User mode cookies
+
+- `kt_session` holds `{"token": ...}` encrypted with Fernet. Key: HKDF-SHA256 of `SECRET_KEY`, info `kaneo-templates cookies`.
+- Cookie and Fernet lifetime: 30 days. Kaneo sessions slide by 7 days on use, so Kaneo decides when a session ends; a `401` clears the cookie.
+- Always `Secure`, as the spec requires, even when the request looks like plain HTTP (a proxy may terminate TLS without forwarding the scheme). Browsers accept `Secure` cookies on `http://localhost`.
+- The pending device flow (device code, user code, interval, expiry) lives in a second encrypted cookie, `kt_device`, so the app stays stateless. The device code never reaches the page.
+- The browser polls `POST /login/device/poll` with `hx-trigger="load delay:Ns"`, `N` being Kaneo's interval, raised by 5 s on `slow_down`.
+- Sign-in, polling and sign-out are `POST` with the CSRF token. Success answers `HX-Refresh: true`.
+- In user mode, the preview and template fields also require a session, so templates are not readable without signing in.
+
+## D19. Stylesheet
+
+Tailwind CSS v4, the framework of Kaneo's web UI, with Kaneo's theme tokens (`apps/web/src/index.css`): neutral palette, translucent borders, board lanes and cards, Geist. The stylesheet is compiled with the pinned standalone CLI (`scripts/build-css.sh`, version `v4.3.3`, fetched through the `pytailwindcss` dev dependency) and committed, so the image needs no Node and the app no front-end build at run time. CI rebuilds it and fails if the committed file differs. Geist (latin and latin-ext subsets) is served locally because the CSP forbids external fonts.
+
+## D20. Board preview
+
+The preview shows the board as it will be created: one lane per column, cards placed with the same rule as the creation (`plan_board` mirrors `Creator._column_for`), numbered in creation order (top-level tasks, then subtasks) with the key derived from the project name. That key may end up with a suffix when it is already taken in the workspace.

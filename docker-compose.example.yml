@@ -1,0 +1,16 @@
+services:
+  kaneo-templates:
+    image: ghcr.io/matyu9/kaneo-create-extension:latest
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${HOST_PORT:-8000}:8000"
+    volumes:
+      - ./templates:/data/templates:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
