@@ -35,3 +35,31 @@ A pasted token can be an API key or a session token. It is validated with `GET /
 ## D8. Python version
 
 The spec targets Python 3.13 (Docker image `python:3.13-slim`). `pyproject.toml` declares `requires-python = ">=3.13"` and CI runs 3.13.
+
+## D9. `end_date.required` default
+
+When `end_date` is present without `required`, the date is required. A template that plans tasks rarely wants them created silently without due dates. `end_date:` with no value is accepted and means the same.
+
+## D10. `due` syntax details
+
+- A sign is required for non-zero offsets (`7d` is rejected, `+7d` accepted); `0d`, `0b` and `J0` need none.
+- The `J` alias is calendar days only (`J-7`, `J+3`, case-insensitive). Business days use `-5b`.
+- Offsets are limited to 4 digits.
+- Business days count from the end date whatever its weekday: from a Saturday, `+1b` is Monday and `-1b` is Friday. `0b` is the end date itself, even on a weekend (flagged in the preview).
+- A YAML integer (`due: -7`) is rejected with the expected syntax.
+
+## D11. Subtask column
+
+A subtask without `column` goes to its parent's column.
+
+## D12. Template files
+
+- `.yml` and `.yaml`, hidden files ignored, 256 KiB maximum, UTF-8.
+- Identifier = file name without extension, matching `[A-Za-z0-9][A-Za-z0-9_-]{0,63}`; other names are reported as invalid. When `x.yml` and `x.yaml` both exist, the first in alphabetical order wins and the other is reported.
+- Unknown keys are rejected (catches typos such as `dues:`).
+- A template without tasks is valid.
+- Validation messages give the path (`tasks[2].subtasks[0]`) but never the values, so that template content stays out of logs.
+
+## D13. `SECRET_KEY`
+
+At least 32 characters, any content. The Fernet key will be derived from it (step 6), so users do not need to generate a Fernet-formatted key.
