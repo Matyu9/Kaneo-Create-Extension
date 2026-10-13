@@ -63,3 +63,19 @@ A subtask without `column` goes to its parent's column.
 ## D13. `SECRET_KEY`
 
 At least 32 characters, any content. The Fernet key will be derived from it (step 6), so users do not need to generate a Fernet-formatted key.
+
+## D14. Creation order and stop on failure
+
+Top-level tasks are created first, in template order, then subtasks, each one linked to its parent right after being created. Labels are attached right after their task. The creation stops at the first failed write; the report lists what was created and the failing step.
+
+## D15. `HOST` and `PORT`
+
+`kaneo-templates` listens on `HOST` (default `0.0.0.0`, for the container) and `PORT` (default `8000`). For a local run, set `HOST=127.0.0.1`.
+
+## D16. CSRF before step 6
+
+Double-submit token: a random value in an `HttpOnly`, `SameSite=Lax` cookie, repeated in a hidden form field and compared in constant time. Step 6 may replace it with a token signed with `SECRET_KEY`.
+
+## D17. HTMX
+
+htmx 2.0.11 is vendored in `src/kaneo_templates/web/static/htmx.min.js` (0BSD licence). Its inline indicator styles are disabled (`htmx-config` meta) so that the CSP can forbid inline styles.

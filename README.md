@@ -13,6 +13,28 @@ uv run ruff format --check
 uv run pytest
 ```
 
+## Local test
+
+1. Create a `.env` file outside the repository (or anywhere ignored by git) with:
+
+   ```
+   KANEO_BASE_URL=https://kaneo.example.com/api
+   KANEO_TOKEN=your-api-key
+   TEMPLATES_DIR=templates-examples
+   HOST=127.0.0.1
+   PORT=8000
+   ```
+
+2. Start the app:
+
+   ```sh
+   uv run --env-file path/to/.env kaneo-templates
+   ```
+
+3. Open http://127.0.0.1:8000. Every click on "Create project" creates a real project in Kaneo.
+
+Only `AUTH_MODE=service` is available at this stage.
+
 ## License
 
 MIT

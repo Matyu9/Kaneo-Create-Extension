@@ -1,0 +1,28 @@
+version: 1
+name: Réunion du conseil d'administration
+description: Préparation, tenue et suivi d'une réunion de CA
+end_date:
+  required: true
+  label: Date de la réunion
+tasks:
+  - title: Fixer l'ordre du jour avec la présidence
+    due: -21d
+    priority: high
+  - title: Envoyer la convocation et les documents
+    due: -15d
+    priority: high
+    labels: [gouvernance]
+  - title: Collecter les procurations
+    due: -2b
+  - title: Réserver la salle ou la visioconférence
+    due: -14d
+  - title: Rédiger le procès-verbal
+    due: +5b
+    subtasks:
+      - title: Faire relire par le secrétaire
+        due: +8b
+      - title: Faire signer
+        due: +10b
+  - title: Archiver les documents
+    due: +15d
+    priority: low

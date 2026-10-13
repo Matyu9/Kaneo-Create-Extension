@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
-from kaneo_templates import __version__
+from kaneo_templates import __version__, auth
 from kaneo_templates.config import ConfigError, Settings, load_settings
+from kaneo_templates.web.routes import router
+
+STATIC_DIR = Path(__file__).parent / "web" / "static"
 
 logger = logging.getLogger("kaneo_templates")
 
@@ -38,6 +44,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url=None,
     )
     app.state.settings = settings
+    auth.install(app, settings)
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.include_router(router)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict[str, str]:
@@ -52,7 +61,7 @@ def run() -> None:
     uvicorn.run(
         "kaneo_templates.main:create_app",
         factory=True,
-        host="0.0.0.0",  # noqa: S104 - meant to run in a container behind a reverse proxy
-        port=8000,
+        host=os.environ.get("HOST", "0.0.0.0"),  # noqa: S104 - container default
+        port=int(os.environ.get("PORT", "8000")),
         proxy_headers=True,
     )

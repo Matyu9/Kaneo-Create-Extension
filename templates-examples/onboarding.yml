@@ -1,0 +1,30 @@
+version: 1
+name: Accueil d'un nouvel arrivant
+description: Étapes avant et après la date d'arrivée
+end_date:
+  required: false
+  label: Date d'arrivée
+columns:
+  - Avant l'arrivée
+  - Première semaine
+  - Fait
+tasks:
+  - title: Préparer le poste de travail
+    due: -5b
+    column: Avant l'arrivée
+    labels: [informatique]
+  - title: Créer les comptes
+    due: -3b
+    column: Avant l'arrivée
+    labels: [informatique]
+    subtasks:
+      - title: Messagerie
+      - title: Accès aux outils de l'équipe
+  - title: Présenter l'équipe
+    due: 0d
+    column: Première semaine
+  - title: Point de fin de première semaine
+    due: +4b
+    column: Première semaine
+  - title: Entretien de suivi
+    due: +30d

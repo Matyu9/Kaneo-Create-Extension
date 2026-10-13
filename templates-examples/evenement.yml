@@ -1,0 +1,29 @@
+version: 1
+name: Organisation d'un événement
+description: Tâches planifiées autour de la date de l'événement
+end_date:
+  required: true
+  label: Date de l'événement
+columns:
+  - À faire
+  - En cours
+  - Terminé
+tasks:
+  - title: Réserver la salle
+    due: -30d
+    priority: high
+    column: À faire
+    description: Vérifier la capacité et l'accès
+    labels: [logistique]
+  - title: Envoyer les convocations
+    due: -7d
+    priority: medium
+  - title: Préparer l'ordre du jour
+    due: -5b
+  - title: Rédiger le compte rendu
+    due: +3d
+    subtasks:
+      - title: Relire le brouillon
+        due: +5d
+      - title: Diffuser
+  - title: Faire le point avec l'équipe

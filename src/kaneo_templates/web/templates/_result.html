@@ -1,0 +1,22 @@
+{% if errors %}
+  <div class="alert" role="alert">
+    <ul>{% for e in errors %}<li>{{ t(e) }}</li>{% endfor %}</ul>
+    {% if detail %}<p>{{ detail }}</p>{% endif %}
+  </div>
+{% elif report %}
+  <div class="{{ 'success' if report.ok else 'alert' }}" role="status">
+    <h2>{{ t("result_ok") if report.ok else t("result_partial") }}{% if report.project_key %} · {{ report.project_key }}{% endif %}</h2>
+    {% if report.project_url %}<p><a href="{{ report.project_url }}" target="_blank" rel="noopener">{{ t("open_in_kaneo") }}</a></p>{% endif %}
+    <p>{{ report.tasks_created }} {{ t("tasks_created") }}, {{ report.subtasks_created }} {{ t("subtasks_created") }}</p>
+    {% if report.created %}<p>{{ t("created") }} : {{ report.created|join(", ") }}</p>{% endif %}
+    {% if report.warnings %}
+      <h3>{{ t("warnings") }}</h3>
+      <ul>{% for w in report.warnings %}{% set parts = w.split(": ", 1) %}<li><code>{{ parts[0] }}</code> : {{ t(parts[1]) }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if report.failures %}
+      <h3>{{ t("failed") }}</h3>
+      <ul>{% for f in report.failures %}<li>{{ f }}</li>{% endfor %}</ul>
+      {% if report.auth_failed %}<p>{{ t("token_rejected") }}</p>{% endif %}
+    {% endif %}
+  </div>
+{% endif %}

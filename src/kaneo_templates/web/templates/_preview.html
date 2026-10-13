@@ -1,0 +1,24 @@
+{% if plan %}
+  {% for w in plan.warnings %}<p class="notice">{{ t(w) }}</p>{% endfor %}
+  <h3>{{ t("columns") }}{% if not plan.custom_columns %} <span class="hint">({{ t("kaneo_default_columns") }})</span>{% endif %}</h3>
+  <ol class="columns">{% for c in plan.columns %}<li>{{ c }}</li>{% endfor %}</ol>
+  <h3>{{ t("tasks") }} ({{ plan.tasks|length }} + {{ plan.subtasks|length }})</h3>
+  {% if not plan.items %}<p>{{ t("no_tasks") }}</p>{% endif %}
+  <ul class="tasks">
+  {% for item in plan.items %}
+    <li class="{{ 'sub' if item.is_subtask else '' }}">
+      <span class="task-title">{{ item.title }}</span>
+      <span class="due {{ 'past' if item.past else '' }}">
+        {% if item.due %}{{ item.due.strftime("%d/%m/%Y") }}{% else %}{{ t("no_due") }}{% endif %}
+        {% if item.weekend %}<span class="tag">{{ t("weekend") }}</span>{% endif %}
+        {% if item.past %}<span class="tag warn">{{ t("past") }}</span>{% endif %}
+      </span>
+      <span class="meta">
+        {%- if item.column %}{{ t("column") }} : {{ item.column }}{% endif %}
+        {%- if item.priority %} · {{ t("priority") }} : {{ item.priority }}{% endif %}
+        {%- if item.labels %} · {{ t("labels") }} : {{ item.labels|join(", ") }}{% endif -%}
+      </span>
+    </li>
+  {% endfor %}
+  </ul>
+{% endif %}

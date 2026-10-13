@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+  <title>{{ t("title") }} · kaneo-templates</title>
+  <link rel="stylesheet" href="static/app.css">
+  <script src="static/htmx.min.js" defer></script>
+</head>
+<body>
+<main>
+  <h1>{{ t("title") }}</h1>
+
+  {% if user_mode %}
+    <p class="alert">{{ t("user_mode_pending") }}</p>
+  {% else %}
+    {% if token_rejected %}<p class="alert">{{ t("token_rejected") }}</p>{% endif %}
+    {% if kaneo_error %}<p class="alert">{{ t("kaneo_unreachable") }} : {{ kaneo_error }}</p>{% endif %}
+
+    {% if loaded.errors %}
+      <details class="notice">
+        <summary>{{ t("invalid_templates") }} ({{ loaded.errors|length }})</summary>
+        <ul>{% for key, reason in loaded.errors.items() %}<li><code>{{ key }}</code> : {{ reason }}</li>{% endfor %}</ul>
+      </details>
+    {% endif %}
+
+    {% if not template_ids %}
+      <p class="alert">{{ t("no_templates") }}</p>
+    {% else %}
+    <form id="create-form" hx-post="create" hx-target="#result" hx-disabled-elt="find button[type=submit]" hx-indicator="#spinner">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+
+      <label for="workspace_id">{{ t("workspace") }}</label>
+      <select id="workspace_id" name="workspace_id" required>
+        {% for w in workspaces %}
+          <option value="{{ w.id }}" {% if w.id == settings.kaneo_workspace_id %}selected{% endif %}>{{ w.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="template">{{ t("template") }}</label>
+      <select id="template" name="template" required
+              hx-get="template-fields" hx-target="#template-fields" hx-include="#create-form" hx-trigger="change">
+        {% for tid in template_ids %}
+          <option value="{{ tid }}" {% if tid == selected_id %}selected{% endif %}>{{ loaded.templates[tid].name }}</option>
+        {% endfor %}
+      </select>
+
+      <div id="template-fields">{% include "_template_fields.html" %}</div>
+
+      <label for="name">{{ t("project_name") }}</label>
+      <input id="name" name="name" required maxlength="200" autocomplete="off">
+
+      <section aria-labelledby="preview-title">
+        <h2 id="preview-title">{{ t("preview") }}</h2>
+        <div id="preview" hx-get="preview" hx-include="#create-form"
+             hx-trigger="load, refresh-preview from:body" aria-live="polite"></div>
+      </section>
+
+      <button type="submit">{{ t("create") }}</button>
+      <span id="spinner" class="htmx-indicator">{{ t("creating") }}</span>
+    </form>
+    <div id="result" aria-live="polite"></div>
+    {% endif %}
+  {% endif %}
+</main>
+</body>
+</html>
