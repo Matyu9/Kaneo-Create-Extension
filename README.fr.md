@@ -72,6 +72,7 @@ Nécessite [uv](https://docs.astral.sh/uv/).
 uv sync
 uv run pytest                  # tests unitaires, sans réseau
 uv run ruff check && uv run ruff format --check
+uv run kaneo-templates check templates-examples
 scripts/build-css.sh           # après un changement de classes dans les gabarits (--watch pendant l'édition)
 ```
 

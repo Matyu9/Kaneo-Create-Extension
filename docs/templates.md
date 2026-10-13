@@ -129,6 +129,18 @@ Spaces inside the braces are allowed (`{{ end_date }}`). Any other name is rejec
 
 The preview flags due dates that fall on a weekend, on a public holiday or in the past; neither blocks the creation. Due dates are sent to Kaneo at noon UTC so that they show on the same day in every time zone.
 
+## Checking templates
+
+`kaneo-templates check` validates a folder without starting the app or calling Kaneo, and exits with status 1 when a template is invalid, which suits a CI job or a pre-commit hook:
+
+```console
+$ docker run --rm -v ./templates:/data/templates:ro ghcr.io/matyu9/kaneo-create-extension check
+ok     evenement: 5 tasks, 2 subtasks
+error  reunion: tasks[3].due: invalid due offset: expected forms like -7d, +3d, 0d, -5b, J-7, J+3
+```
+
+The folder defaults to `TEMPLATES_DIR`; pass another one as argument (`kaneo-templates check ./templates`).
+
 ## Files
 
 - Extensions `.yml` and `.yaml`. Hidden files are ignored.
