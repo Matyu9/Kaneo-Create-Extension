@@ -1,0 +1,47 @@
+{# Icons are Lucide paths (ISC licence), the icon set of the Kaneo web UI. #}
+{% set ICONS = {
+  "logo": '<rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="16" y="14" rx="1"/>',
+  "calendar": '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+  "external": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  "logout": '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
+  "check": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  "alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  "error": '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  "info": '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  "loader": '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+  "tag": '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+  "subtask": '<polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/>',
+  "tree": '<path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/><path d="M3 6v4c0 1.1.9 2 2 2h3"/><path d="M3 10v6c0 1.1.9 2 2 2h3"/>',
+  "circle": '<circle cx="12" cy="12" r="9"/>',
+  "key": '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+} %}
+
+{% macro icon(name, cls="size-4") -%}
+<svg class="{{ cls }} shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{{ ICONS[name]|safe }}</svg>
+{%- endmacro %}
+
+{# Kaneo shows priority as three bars (low, medium, high) or a red square (urgent). #}
+{% macro priority_icon(priority) -%}
+{% if priority == "urgent" -%}
+<svg class="size-4 shrink-0 text-priority-urgent" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="currentColor"/><rect x="7.25" y="4" width="1.5" height="5" rx=".75" fill="#fff"/><rect x="7.25" y="10.5" width="1.5" height="1.5" rx=".75" fill="#fff"/></svg>
+{%- else -%}
+{% set level = {"low": 1, "medium": 2, "high": 3}.get(priority, 0) %}
+<svg class="size-4 shrink-0" viewBox="0 0 16 16" aria-hidden="true">
+  {%- for i in range(3) %}<rect x="{{ 2 + i * 4.5 }}" y="{{ 10 - i * 3 }}" width="3" height="{{ 4 + i * 3 }}" rx="1" class="{{ 'fill-priority-bar' if i < level else 'fill-priority-bar-empty' }}"/>{% endfor -%}
+</svg>
+{%- endif %}
+{%- endmacro %}
+
+{% macro alert(kind, title=None) -%}
+<div class="alert alert-{{ kind }}" role="{{ 'alert' if kind == 'error' else 'status' }}">
+  {{ icon({"error": "error", "warning": "alert", "success": "check", "info": "info"}[kind], "size-4 mt-0.5") }}
+  <div class="min-w-0 flex-1 space-y-1">
+    {% if title %}<p class="font-medium">{{ title }}</p>{% endif %}
+    <div class="text-foreground/80 [&_ul]:list-disc [&_ul]:pl-4 [&_code]:font-mono [&_code]:text-xs">{{ caller() }}</div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro spinner(label) -%}
+<span class="htmx-indicator items-center gap-2 text-sm text-muted-foreground">{{ icon("loader", "size-4 animate-spin") }}{{ label }}</span>
+{%- endmacro %}

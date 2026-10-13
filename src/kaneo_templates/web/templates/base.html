@@ -1,0 +1,40 @@
+{% import "_macros.html" as m %}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+  <title>{{ t("title") }} · kaneo-templates</title>
+  <link rel="stylesheet" href="static/app.css">
+  <link rel="icon" href="static/favicon.svg" type="image/svg+xml">
+  <script src="static/htmx.min.js" defer></script>
+</head>
+<body class="min-h-dvh text-sm">
+<header class="sticky top-0 z-10 border-b bg-sidebar/90 backdrop-blur">
+  <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
+    <span class="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">{{ m.icon("logo", "size-4") }}</span>
+    <div class="min-w-0">
+      <p class="truncate text-sm font-semibold leading-tight">{{ t("title") }}</p>
+      <p class="truncate text-xs text-muted-foreground leading-tight">kaneo-templates</p>
+    </div>
+    <nav class="ml-auto flex items-center gap-1">
+      <a class="btn btn-ghost btn-sm" href="{{ settings.kaneo_public_url }}" target="_blank" rel="noopener">
+        {{ m.icon("external", "size-3.5") }}<span class="max-sm:sr-only">{{ t("open_kaneo") }}</span>
+      </a>
+      {% if user_mode and signed_in %}
+        <form hx-post="logout">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}">
+          <button type="submit" class="btn btn-outline btn-sm" title="{{ t('signed_in') }}">
+            {{ m.icon("logout", "size-3.5") }}<span class="max-sm:sr-only">{{ t("sign_out") }}</span>
+          </button>
+        </form>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

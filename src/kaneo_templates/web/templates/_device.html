@@ -1,0 +1,10 @@
+{% import "_macros.html" as m %}
+<div class="space-y-4 rounded-lg border bg-muted/50 p-4 text-center">
+  <p class="text-muted-foreground">{{ t("device_instructions") }}</p>
+  <p><span class="kbd-code inline-block" data-testid="user-code">{{ state.user_code }}</span></p>
+  <a class="btn btn-outline btn-sm" href="{{ state.verification_uri }}" target="_blank" rel="noopener">{{ t("device_open") }} {{ m.icon("external", "size-3.5") }}</a>
+  <p class="flex items-center justify-center gap-2 text-xs text-muted-foreground">{{ m.icon("loader", "size-3.5 animate-spin") }}{{ t("device_waiting") }}</p>
+  <form hx-post="login/device/poll" hx-trigger="load delay:{{ state.interval }}s" hx-target="#device" data-interval="{{ state.interval }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  </form>
+</div>

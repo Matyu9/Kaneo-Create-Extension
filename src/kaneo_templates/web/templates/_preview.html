@@ -1,24 +1,62 @@
+{% import "_macros.html" as m %}
 {% if plan %}
-  {% for w in plan.warnings %}<p class="notice">{{ t(w) }}</p>{% endfor %}
-  <h3>{{ t("columns") }}{% if not plan.custom_columns %} <span class="hint">({{ t("kaneo_default_columns") }})</span>{% endif %}</h3>
-  <ol class="columns">{% for c in plan.columns %}<li>{{ c }}</li>{% endfor %}</ol>
-  <h3>{{ t("tasks") }} ({{ plan.tasks|length }} + {{ plan.subtasks|length }})</h3>
-  {% if not plan.items %}<p>{{ t("no_tasks") }}</p>{% endif %}
-  <ul class="tasks">
-  {% for item in plan.items %}
-    <li class="{{ 'sub' if item.is_subtask else '' }}">
-      <span class="task-title">{{ item.title }}</span>
-      <span class="due {{ 'past' if item.past else '' }}">
-        {% if item.due %}{{ item.due.strftime("%d/%m/%Y") }}{% else %}{{ t("no_due") }}{% endif %}
-        {% if item.weekend %}<span class="tag">{{ t("weekend") }}</span>{% endif %}
-        {% if item.past %}<span class="tag warn">{{ t("past") }}</span>{% endif %}
-      </span>
-      <span class="meta">
-        {%- if item.column %}{{ t("column") }} : {{ item.column }}{% endif %}
-        {%- if item.priority %} · {{ t("priority") }} : {{ item.priority }}{% endif %}
-        {%- if item.labels %} · {{ t("labels") }} : {{ item.labels|join(", ") }}{% endif -%}
-      </span>
-    </li>
-  {% endfor %}
-  </ul>
+<div class="space-y-4">
+  {% for w in plan.warnings %}{% call m.alert("warning") %}{{ t(w) }}{% endcall %}{% endfor %}
+
+  <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+    <span class="badge">{{ plan.columns|length }} {{ t("columns")|lower }}</span>
+    <span class="badge">{{ plan.tasks|length }} {{ t("tasks")|lower }}</span>
+    <span class="badge">{{ plan.subtasks|length }} {{ t("subtasks")|lower }}</span>
+    {% if not plan.custom_columns %}<span>{{ t("kaneo_default_columns") }}</span>{% endif %}
+  </div>
+
+  {% if not plan.items %}{% call m.alert("info") %}{{ t("no_tasks") }}{% endcall %}{% endif %}
+
+  <div class="-mx-4 flex snap-x items-start gap-3 overflow-x-auto scroll-px-4 px-4 pb-3 sm:mx-0 sm:scroll-px-0 sm:px-0" data-testid="board">
+    {% for column in board %}
+    <div class="flex w-72 shrink-0 snap-start flex-col rounded-xl bg-board-lane p-2" data-column="{{ column.name }}">
+      <div class="flex items-center gap-2 px-1.5 pt-1 pb-2.5">
+        {{ m.icon("check" if loop.last else "circle", "size-3.5 text-muted-foreground") }}
+        <h3 class="truncate text-[13px] font-medium">{{ column.name }}</h3>
+        <span class="text-xs text-muted-foreground tabular-nums">{{ column.cards|length }}</span>
+      </div>
+      <ol class="flex flex-col gap-2">
+        {% for card in column.cards %}{% set item = card.item %}
+        <li class="rounded-lg border border-board-card-border bg-board-card p-3 shadow-board-card transition-colors hover:border-board-card-border-hover">
+          <div class="flex items-center gap-2 text-xs text-board-id">
+            <span class="font-mono tabular-nums">{{ key or "#" }}-{{ card.number }}</span>
+            {% if item.priority and item.priority != "no-priority" %}
+              <span class="ml-auto" title="{{ t('priority') }} : {{ t('priority_' ~ item.priority) }}">{{ m.priority_icon(item.priority) }}<span class="sr-only">{{ t('priority_' ~ item.priority) }}</span></span>
+            {% endif %}
+          </div>
+          {% if card.parent_title %}
+            <p class="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">{{ m.icon("subtask", "size-3") }}<span class="truncate">{{ t("subtask_of") }} « {{ card.parent_title }} »</span></p>
+          {% endif %}
+          <p class="mt-1.5 text-[13px] font-medium leading-snug text-board-title">{{ item.title }}</p>
+          {% if item.description %}<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">{{ item.description }}</p>{% endif %}
+          <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+            {% if item.due %}
+              <span class="chip {{ 'border-due-overdue/40 text-due-overdue' if item.past else '' }}">
+                {{ m.icon("calendar", "size-3 text-chip-icon") }}<span class="tabular-nums">{{ t("weekdays").split()[item.due.weekday()] }} {{ item.due.strftime("%d/%m/%Y") }}</span>
+              </span>
+            {% else %}
+              <span class="chip text-chip-muted">{{ m.icon("calendar", "size-3 text-chip-icon") }}{{ t("no_due") }}</span>
+            {% endif %}
+            {% if item.weekend %}<span class="chip border-warning/40 text-warning-foreground">{{ t("weekend") }}</span>{% endif %}
+            {% if item.past %}<span class="chip border-due-overdue/40 text-due-overdue">{{ t("past") }}</span>{% endif %}
+            {% if card.subtask_count %}<span class="chip">{{ m.icon("tree", "size-3 text-chip-icon") }}0/{{ card.subtask_count }}</span>{% endif %}
+            {% for label in item.labels %}<span class="chip"><span class="size-2 rounded-full bg-chip-icon"></span>{{ label }}</span>{% endfor %}
+          </div>
+          {% if card.column_missing %}
+            <p class="mt-2 flex items-center gap-1 text-xs text-warning-foreground">{{ m.icon("alert", "size-3") }}<code class="font-mono">{{ item.column }}</code> : {{ t("column_missing") }}</p>
+          {% endif %}
+        </li>
+        {% else %}
+        <li class="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">{{ t("empty_column") }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endfor %}
+  </div>
+</div>
 {% endif %}

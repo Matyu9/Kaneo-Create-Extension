@@ -1,0 +1,6 @@
+{% import "_macros.html" as m %}
+{% call m.alert("error") %}
+  {{ t(error) }}
+  {% if error == "device_not_allowed" %}<p class="mt-1"><code>{{ settings.device_client_id }}</code></p>{% endif %}
+  {% if detail %}<p class="mt-1 font-mono text-xs">{{ detail }}</p>{% endif %}
+{% endcall %}

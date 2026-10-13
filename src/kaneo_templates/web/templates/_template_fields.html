@@ -1,9 +1,11 @@
 {% if selected %}
-  {% if selected.description %}<p class="description">{{ selected.description }}</p>{% endif %}
+  {% if selected.description %}<p class="-mt-2 text-xs text-muted-foreground">{{ selected.description }}</p>{% endif %}
   {% if selected.end_date %}
-    <label for="end_date">{{ selected.end_date.label or t("end_date") }}
-      <span class="hint">({{ t("required") if selected.end_date.required else t("optional") }})</span></label>
-    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" {% if selected.end_date.required %}required{% endif %}
-           hx-get="preview" hx-include="#create-form" hx-target="#preview" hx-trigger="change">
+    <div class="space-y-2">
+      <label class="label" for="end_date">{{ selected.end_date.label or t("end_date") }}
+        <span class="hint">({{ t("required") if selected.end_date.required else t("optional") }})</span></label>
+      <input class="input" type="date" id="end_date" name="end_date" value="{{ end_date }}" {% if selected.end_date.required %}required{% endif %}
+             hx-get="preview" hx-include="#create-form" hx-target="#preview" hx-trigger="change">
+    </div>
   {% endif %}
 {% endif %}

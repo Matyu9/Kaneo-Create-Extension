@@ -1,68 +1,75 @@
-<!doctype html>
-<html lang="{{ lang }}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
-  <title>{{ t("title") }} · kaneo-templates</title>
-  <link rel="stylesheet" href="static/app.css">
-  <script src="static/htmx.min.js" defer></script>
-</head>
-<body>
-<main>
-  <h1>{{ t("title") }}</h1>
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-6 space-y-1">
+  <h1 class="text-xl">{{ t("new_project") }}</h1>
+  <p class="text-muted-foreground">{{ t("new_project_intro") }}</p>
+</div>
 
-  {% if user_mode %}
-    <p class="alert">{{ t("user_mode_pending") }}</p>
-  {% else %}
-    {% if token_rejected %}<p class="alert">{{ t("token_rejected") }}</p>{% endif %}
-    {% if kaneo_error %}<p class="alert">{{ t("kaneo_unreachable") }} : {{ kaneo_error }}</p>{% endif %}
+<div class="mb-6 space-y-3 empty:hidden">
+  {%- if token_rejected %}{% call m.alert("error") %}{{ t("token_rejected") }}{% endcall %}{% endif -%}
+  {%- if kaneo_error %}{% call m.alert("error", t("kaneo_unreachable")) %}{{ kaneo_error }}{% endcall %}{% endif -%}
+  {%- if loaded.errors %}
+    {% call m.alert("warning", t("invalid_templates") ~ " (" ~ loaded.errors|length ~ ")") %}
+      <ul>{% for key, reason in loaded.errors.items() %}<li><code>{{ key }}</code> : {{ reason }}</li>{% endfor %}</ul>
+    {% endcall %}
+  {% endif -%}
+  {%- if not template_ids %}{% call m.alert("error") %}{{ t("no_templates") }}{% endcall %}{% endif -%}
+</div>
 
-    {% if loaded.errors %}
-      <details class="notice">
-        <summary>{{ t("invalid_templates") }} ({{ loaded.errors|length }})</summary>
-        <ul>{% for key, reason in loaded.errors.items() %}<li><code>{{ key }}</code> : {{ reason }}</li>{% endfor %}</ul>
-      </details>
-    {% endif %}
-
-    {% if not template_ids %}
-      <p class="alert">{{ t("no_templates") }}</p>
-    {% else %}
-    <form id="create-form" hx-post="create" hx-target="#result" hx-disabled-elt="find button[type=submit]" hx-indicator="#spinner">
+{% if template_ids %}
+<div class="grid items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
+  <div class="space-y-4 lg:sticky lg:top-20">
+    <form id="create-form" class="card space-y-5 p-5" hx-post="create" hx-target="#result"
+          hx-disabled-elt="find button[type=submit]" hx-indicator="#create-form">
       <input type="hidden" name="csrf_token" value="{{ csrf }}">
 
-      <label for="workspace_id">{{ t("workspace") }}</label>
-      <select id="workspace_id" name="workspace_id" required>
-        {% for w in workspaces %}
-          <option value="{{ w.id }}" {% if w.id == settings.kaneo_workspace_id %}selected{% endif %}>{{ w.name }}</option>
-        {% endfor %}
-      </select>
+      <div class="space-y-2">
+        <label class="label" for="workspace_id">{{ t("workspace") }}</label>
+        <select class="input" id="workspace_id" name="workspace_id" required>
+          {% for w in workspaces %}
+            <option value="{{ w.id }}" {% if w.id == settings.kaneo_workspace_id %}selected{% endif %}>{{ w.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-      <label for="template">{{ t("template") }}</label>
-      <select id="template" name="template" required
-              hx-get="template-fields" hx-target="#template-fields" hx-include="#create-form" hx-trigger="change">
-        {% for tid in template_ids %}
-          <option value="{{ tid }}" {% if tid == selected_id %}selected{% endif %}>{{ loaded.templates[tid].name }}</option>
-        {% endfor %}
-      </select>
+      <div class="space-y-2">
+        <label class="label" for="template">{{ t("template") }}</label>
+        <select class="input" id="template" name="template" required
+                hx-get="template-fields" hx-target="#template-fields" hx-include="#create-form" hx-trigger="change">
+          {% for tid in template_ids %}
+            <option value="{{ tid }}" {% if tid == selected_id %}selected{% endif %}>{{ loaded.templates[tid].name }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-      <div id="template-fields">{% include "_template_fields.html" %}</div>
+      <div id="template-fields" class="space-y-5 empty:hidden">{% include "_template_fields.html" %}</div>
 
-      <label for="name">{{ t("project_name") }}</label>
-      <input id="name" name="name" required maxlength="200" autocomplete="off">
+      <div class="space-y-2">
+        <label class="label" for="name">{{ t("project_name") }}</label>
+        <input class="input" id="name" name="name" required maxlength="200" autocomplete="off"
+               placeholder="{{ t('project_name_placeholder') }}"
+               hx-get="preview" hx-include="#create-form" hx-target="#preview"
+               hx-trigger="input changed delay:400ms">
+      </div>
 
-      <section aria-labelledby="preview-title">
-        <h2 id="preview-title">{{ t("preview") }}</h2>
-        <div id="preview" hx-get="preview" hx-include="#create-form"
-             hx-trigger="load, refresh-preview from:body" aria-live="polite"></div>
-      </section>
-
-      <button type="submit">{{ t("create") }}</button>
-      <span id="spinner" class="htmx-indicator">{{ t("creating") }}</span>
+      <div class="flex items-center gap-3 border-t pt-5">
+        <button type="submit" class="btn btn-primary w-full">
+          <span class="htmx-hide-on-request">{{ t("create") }}</span>
+          {{ m.spinner(t("creating")) }}
+        </button>
+      </div>
     </form>
-    <div id="result" aria-live="polite"></div>
-    {% endif %}
-  {% endif %}
-</main>
-</body>
-</html>
+    <div id="result" class="empty:hidden" aria-live="polite"></div>
+  </div>
+
+  <section class="min-w-0 space-y-4" aria-labelledby="preview-title">
+    <div>
+      <h2 id="preview-title" class="text-base">{{ t("preview") }}</h2>
+      <p class="text-muted-foreground">{{ t("preview_intro") }}</p>
+    </div>
+    <div id="preview" hx-get="preview" hx-include="#create-form"
+         hx-trigger="load, refresh-preview from:body" aria-live="polite"></div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

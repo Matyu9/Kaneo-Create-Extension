@@ -97,6 +97,61 @@ def _planned(
     )
 
 
+@dataclass
+class BoardCard:
+    item: PlannedItem
+    number: int
+    parent_title: str | None
+    subtask_count: int
+    column_missing: bool
+
+
+@dataclass
+class BoardColumn:
+    name: str
+    cards: list[BoardCard]
+
+
+def creation_order(plan: Plan) -> list[int]:
+    """Indexes of `plan.items` in creation order: top-level tasks first, then subtasks."""
+    tasks = [i for i, it in enumerate(plan.items) if not it.is_subtask]
+    return tasks + [i for i, it in enumerate(plan.items) if it.is_subtask]
+
+
+def plan_board(plan: Plan) -> list[BoardColumn]:
+    """Lay the plan out as the Kaneo board will show it, for the preview.
+
+    Cards are placed with the same rule as `Creator._column_for` and numbered in creation
+    order, which is how Kaneo numbers the tasks of a new project.
+    """
+    board = [BoardColumn(name, []) for name in plan.columns]
+    for number, index in enumerate(creation_order(plan), start=1):
+        item = plan.items[index]
+        target, missing = 0, False
+        if item.column:
+            wanted = column_slug(item.column)
+            found = next(
+                (
+                    i
+                    for i, name in enumerate(plan.columns)
+                    if column_slug(name) == wanted or name.casefold() == item.column.casefold()
+                ),
+                None,
+            )
+            target, missing = (found, False) if found is not None else (0, True)
+        parent = plan.items[item.parent_index] if item.parent_index is not None else None
+        board[target].cards.append(
+            BoardCard(
+                item=item,
+                number=number,
+                parent_title=parent.title if parent else None,
+                subtask_count=sum(1 for it in plan.items if it.parent_index == index),
+                column_missing=missing,
+            )
+        )
+    return board
+
+
 def project_key(name: str) -> str:
     """Port of Kaneo's web UI `generateProjectSlug` (apps/web/src/lib/generate-project-id.ts)."""
     text = unicodedata.normalize("NFKC", name).upper()
@@ -128,7 +183,8 @@ class Report:
     project_url: str | None = None
     tasks_created: int = 0
     subtasks_created: int = 0
-    created: list[str] = field(default_factory=list)
+    columns_configured: int = 0
+    labels_created: int = 0
     warnings: list[str] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     auth_failed: bool = False
@@ -177,16 +233,13 @@ class Creator:
         r.project_url = (
             f"{self.public_url}/dashboard/workspace/{workspace_id}/project/{project.id}/board"
         )
-        r.created.append(f"project {project.slug}")
 
         columns = await self._setup_columns(project.id, template)
         labels = await self._resolve_labels(workspace_id, template)
 
         task_ids: dict[int, str] = {}
-        ordered = [(i, it) for i, it in enumerate(plan.items) if not it.is_subtask] + [
-            (i, it) for i, it in enumerate(plan.items) if it.is_subtask
-        ]
-        for index, item in ordered:
+        for index in creation_order(plan):
+            item = plan.items[index]
             column = self._column_for(item, columns)
             task = await self._step(
                 item.path,
@@ -243,7 +296,7 @@ class Creator:
         await self._step(
             "reorder columns", self.client.reorder_columns(project_id, [c.id for c in final])
         )
-        self.report.created.append(f"{len(final)} columns")
+        self.report.columns_configured = len(final)
         return final
 
     async def _resolve_labels(self, workspace_id: str, template: Template) -> dict[str, str]:
@@ -259,7 +312,7 @@ class Creator:
                     self.client.create_label(workspace_id, name, DEFAULT_LABEL_COLOR),
                 )
                 ids[name] = label.id
-                self.report.created.append("label")
+                self.report.labels_created += 1
         return ids
 
     def _column_for(self, item: PlannedItem, columns: list[Column]) -> Column:

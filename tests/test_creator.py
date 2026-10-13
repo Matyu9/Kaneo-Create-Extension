@@ -9,6 +9,8 @@ import respx
 from kaneo_templates.creator import (
     Creator,
     build_plan,
+    creation_order,
+    plan_board,
     project_key,
     unique_project_key,
 )
@@ -179,6 +181,7 @@ async def test_full_creation_order_and_report():
     assert report.project_key == "SP"
     assert report.project_url == f"{PUBLIC}/dashboard/workspace/w1/project/p1/board"
     assert (report.tasks_created, report.subtasks_created) == (3, 2)
+    assert (report.columns_configured, report.labels_created) == (3, 2)
 
     sequence = [(m, p) for m, p, _ in fake.writes]
     assert sequence[0] == ("POST", "project")
@@ -222,7 +225,8 @@ async def test_reorder_and_final_column():
 
 
 async def test_labels_use_definitions_never_task_bound_rows():
-    fake, _ = await run({"existing_labels": ["logistics"]})
+    fake, report = await run({"existing_labels": ["logistics"]})
+    assert report.labels_created == 1
     assert [b["name"] for m, p, b in fake.writes if p == "label"] == ["team"]
     attached = [p for m, p, b in fake.writes if p.startswith("label/")]
     assert attached == [
@@ -332,3 +336,81 @@ def test_project_key(name, key):
 def test_unique_project_key_fallback():
     assert unique_project_key("!!!", set()) == "PRJ"
     assert unique_project_key("!!!", {"prj"}) == "PRJ2"
+
+
+# Preview board
+
+
+def board_titles(plan):
+    return {c.name: [card.item.title for card in c.cards] for c in plan_board(plan)}
+
+
+def test_board_places_cards_like_the_creator():
+    plan = build_plan(EVENT, date(2030, 6, 14), date(2030, 1, 1))
+    # "To Do" matches the template column "To do" by name, case-insensitively.
+    assert board_titles(plan) == {
+        "À faire": ["Write minutes", "Debrief", "Proofread", "Send"],
+        "To do": ["Book the room"],
+        "Terminé": [],
+    }
+
+
+def test_board_numbers_in_creation_order():
+    plan = build_plan(EVENT, date(2030, 6, 14), date(2030, 1, 1))
+    numbers = {card.item.title: card.number for c in plan_board(plan) for card in c.cards}
+    assert numbers == {
+        "Book the room": 1,
+        "Write minutes": 2,
+        "Debrief": 3,
+        "Proofread": 4,
+        "Send": 5,
+    }
+
+
+def test_board_subtask_links():
+    plan = build_plan(EVENT, None, date(2030, 1, 1))
+    cards = {card.item.title: card for c in plan_board(plan) for card in c.cards}
+    assert cards["Write minutes"].subtask_count == 2
+    assert cards["Proofread"].parent_title == "Write minutes"
+    assert cards["Book the room"].parent_title is None
+    assert cards["Book the room"].subtask_count == 0
+
+
+def test_creation_order_lists_subtasks_last():
+    plan = build_plan(EVENT, None, date(2030, 1, 1))
+    titles = [plan.items[i].title for i in creation_order(plan)]
+    assert titles == ["Book the room", "Write minutes", "Debrief", "Proofread", "Send"]
+
+
+def test_board_with_kaneo_default_columns():
+    template = parse_template(
+        """\
+version: 1
+name: Plain
+tasks:
+  - title: By slug
+    column: in-review
+  - title: By name
+    column: done
+  - title: Unknown
+    column: Somewhere
+  - title: Nothing
+"""
+    )
+    board = plan_board(build_plan(template, None, date(2030, 1, 1)))
+    assert [c.name for c in board] == ["To Do", "In Progress", "In Review", "Done"]
+    titles = {c.name: [card.item.title for card in c.cards] for c in board}
+    assert titles == {
+        "To Do": ["Unknown", "Nothing"],
+        "In Progress": [],
+        "In Review": ["By slug"],
+        "Done": ["By name"],
+    }
+    missing = [card.item.title for c in board for card in c.cards if card.column_missing]
+    assert missing == ["Unknown"]
+
+
+def test_board_empty_template():
+    template = parse_template("version: 1\nname: Empty\ncolumns: [A, B]\n")
+    board = plan_board(build_plan(template, None, date(2030, 1, 1)))
+    assert [(c.name, c.cards) for c in board] == [("A", []), ("B", [])]

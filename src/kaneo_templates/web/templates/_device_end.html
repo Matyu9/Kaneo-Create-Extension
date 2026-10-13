@@ -1,0 +1,8 @@
+{% import "_macros.html" as m %}
+<div class="space-y-3">
+  {% call m.alert("error") %}{{ t(error) }}{% if detail %}<p class="mt-1 font-mono text-xs">{{ detail }}</p>{% endif %}{% endcall %}
+  <form hx-post="login/device" hx-target="#device">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <button type="submit" class="btn btn-outline btn-sm w-full">{{ t("device_retry") }}</button>
+  </form>
+</div>

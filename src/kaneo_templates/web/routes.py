@@ -1,25 +1,28 @@
 from __future__ import annotations
 
 import logging
-import secrets
+import time
 from datetime import date
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Form, Query, Request
+from fastapi import APIRouter, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
+from kaneo_templates import auth
 from kaneo_templates.config import AuthMode, Settings
-from kaneo_templates.creator import Creator, build_plan
+from kaneo_templates.creator import Creator, build_plan, plan_board, project_key
 from kaneo_templates.i18n import translator
 from kaneo_templates.kaneo_client import KaneoAuthError, KaneoClient, KaneoError
 from kaneo_templates.loader import LoadResult, load_templates
 
 logger = logging.getLogger(__name__)
 
-CSRF_COOKIE = "kt_csrf"
 MAX_NAME_LENGTH = 200
+MAX_TOKEN_LENGTH = 4096
+# RFC 8628 §3.5: add 5 seconds to the polling interval on `slow_down`.
+SLOW_DOWN_STEP = 5
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 router = APIRouter()
@@ -29,12 +32,16 @@ def _settings(request: Request) -> Settings:
     return request.app.state.settings
 
 
-def _client(request: Request) -> KaneoClient:
+def _user_mode(request: Request) -> bool:
+    return _settings(request).auth_mode is AuthMode.USER
+
+
+def _client(request: Request, token: str | None) -> KaneoClient:
     settings = _settings(request)
     factory = getattr(request.app.state, "client_factory", None)
     if factory is not None:
-        return factory(settings)
-    return KaneoClient(settings.kaneo_base_url, settings.kaneo_token)
+        return factory(settings, token)
+    return KaneoClient(settings.kaneo_base_url, token)
 
 
 def _templates(request: Request) -> LoadResult:
@@ -45,7 +52,28 @@ def _render(request: Request, name: str, **context) -> HTMLResponse:
     settings = _settings(request)
     context.setdefault("t", translator(settings.app_lang))
     context.setdefault("lang", settings.app_lang)
+    context.setdefault("settings", settings)
+    context.setdefault("user_mode", settings.auth_mode is AuthMode.USER)
     return templates.TemplateResponse(request, name, context)
+
+
+def _page(request: Request, name: str, **context) -> HTMLResponse:
+    """Full page: carries the CSRF token in the form and in its cookie."""
+    csrf = auth.csrf_token(request)
+    response = _render(request, name, csrf=csrf, **context)
+    auth.set_csrf_cookie(request, response, csrf)
+    return response
+
+
+def _refresh() -> Response:
+    """Ask htmx to reload the page, which shows the sign-in page when needed."""
+    return Response(status_code=200, headers={"HX-Refresh": "true"})
+
+
+def _signed_out(request: Request) -> Response:
+    response = _refresh()
+    auth.clear_session(request, response)
+    return response
 
 
 def _parse_date(value: str | None) -> date | None:
@@ -59,46 +87,41 @@ def _parse_date(value: str | None) -> date | None:
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> Response:
-    settings = _settings(request)
-    loaded = _templates(request)
+    token = auth.kaneo_token(request)
+    if _user_mode(request) and token is None:
+        return _page(request, "login.html")
+
     workspaces = []
     kaneo_error = None
     token_rejected = False
-    if settings.auth_mode is AuthMode.SERVICE:
-        async with _client(request) as kaneo:
-            try:
-                workspaces = await kaneo.list_workspaces()
-            except KaneoAuthError:
-                token_rejected = True
-            except KaneoError as exc:
-                kaneo_error = exc.message
+    async with _client(request, token) as kaneo:
+        try:
+            workspaces = await kaneo.list_workspaces()
+        except KaneoAuthError:
+            if _user_mode(request):
+                response = _page(request, "login.html", notice="session_expired")
+                auth.clear_session(request, response)
+                return response
+            token_rejected = True
+        except KaneoError as exc:
+            kaneo_error = exc.message
 
-    csrf = request.cookies.get(CSRF_COOKIE) or secrets.token_urlsafe(32)
-    first_id = next(iter(sorted(loaded.templates)), None)
-    response = _render(
+    loaded = _templates(request)
+    template_ids = sorted(loaded.templates)
+    first_id = template_ids[0] if template_ids else None
+    return _page(
         request,
         "index.html",
-        settings=settings,
-        user_mode=settings.auth_mode is AuthMode.USER,
+        signed_in=token is not None,
         workspaces=workspaces,
         kaneo_error=kaneo_error,
         token_rejected=token_rejected,
         loaded=loaded,
-        template_ids=sorted(loaded.templates),
+        template_ids=template_ids,
         selected_id=first_id,
         selected=loaded.get(first_id) if first_id else None,
         end_date="",
-        csrf=csrf,
     )
-    response.set_cookie(
-        CSRF_COOKIE,
-        csrf,
-        httponly=True,
-        samesite="lax",
-        secure=request.url.scheme == "https",
-        path=settings.root_path or "/",
-    )
-    return response
 
 
 @router.get("/template-fields", response_class=HTMLResponse)
@@ -107,6 +130,8 @@ async def template_fields(
     template: Annotated[str, Query()] = "",
     end_date: Annotated[str, Query()] = "",
 ) -> Response:
+    if _user_mode(request) and auth.kaneo_token(request) is None:
+        return _refresh()
     selected = _templates(request).get(template)
     response = _render(request, "_template_fields.html", selected=selected, end_date=end_date)
     response.headers["HX-Trigger"] = "refresh-preview"
@@ -118,13 +143,23 @@ async def preview(
     request: Request,
     template: Annotated[str, Query()] = "",
     end_date: Annotated[str, Query()] = "",
+    name: Annotated[str, Query()] = "",
 ) -> Response:
+    if _user_mode(request) and auth.kaneo_token(request) is None:
+        return _refresh()
     selected = _templates(request).get(template)
     if selected is None:
         return _render(request, "_preview.html", plan=None)
     end = _parse_date(end_date) if selected.end_date else None
     plan = build_plan(selected, end, date.today())
-    return _render(request, "_preview.html", plan=plan, template=selected)
+    return _render(
+        request,
+        "_preview.html",
+        plan=plan,
+        board=plan_board(plan),
+        key=project_key(name.strip()[:MAX_NAME_LENGTH]),
+        template=selected,
+    )
 
 
 @router.post("/create", response_class=HTMLResponse)
@@ -137,11 +172,11 @@ async def create(
     end_date: Annotated[str, Form()] = "",
 ) -> Response:
     settings = _settings(request)
-    cookie = request.cookies.get(CSRF_COOKIE, "")
-    if not cookie or not secrets.compare_digest(cookie, csrf_token):
+    if not auth.csrf_ok(request, csrf_token):
         return _render(request, "_result.html", errors=["error_csrf"], report=None)
-    if settings.auth_mode is not AuthMode.SERVICE:
-        return _render(request, "_result.html", errors=["user_mode_pending"], report=None)
+    token = auth.kaneo_token(request)
+    if _user_mode(request) and token is None:
+        return _refresh()
 
     errors: list[str] = []
     selected = _templates(request).get(template)
@@ -158,10 +193,12 @@ async def create(
         elif end is None and selected.end_date_required:
             errors.append("error_date")
 
-    async with _client(request) as kaneo:
+    async with _client(request, token) as kaneo:
         try:
             workspaces = await kaneo.list_workspaces()
         except KaneoAuthError:
+            if _user_mode(request):
+                return _signed_out(request)
             return _render(request, "_result.html", errors=["token_rejected"], report=None)
         except KaneoError as exc:
             return _render(
@@ -189,4 +226,120 @@ async def create(
         report.subtasks_created,
         len(report.failures),
     )
-    return _render(request, "_result.html", errors=[], report=report)
+    response = _render(request, "_result.html", errors=[], report=report)
+    if report.auth_failed and _user_mode(request):
+        # Keep the report on screen; the next request goes to the sign-in page.
+        auth.clear_session(request, response)
+    return response
+
+
+# Sign-in (AUTH_MODE=user)
+
+
+def _require_user_mode(request: Request) -> None:
+    if not _user_mode(request):
+        raise HTTPException(status_code=404)
+
+
+@router.post("/login/device", response_class=HTMLResponse)
+async def login_device(request: Request, csrf_token: Annotated[str, Form()] = "") -> Response:
+    _require_user_mode(request)
+    if not auth.csrf_ok(request, csrf_token):
+        return _render(request, "_login_error.html", error="error_csrf")
+    client_id = _settings(request).device_client_id
+    async with _client(request, None) as kaneo:
+        try:
+            code = await kaneo.request_device_code(client_id)
+        except KaneoError as exc:
+            if exc.code == "invalid_client":
+                return _render(request, "_login_error.html", error="device_not_allowed")
+            logger.warning("Device code request failed (%s %s)", exc.status, exc.code)
+            return _render(request, "_login_error.html", error="kaneo_error", detail=exc.message)
+    state = auth.DeviceState(
+        device_code=code.device_code,
+        user_code=code.user_code,
+        verification_uri=code.verification_uri_complete or code.verification_uri,
+        interval=max(code.interval, 1),
+        expires_at=time.time() + code.expires_in,
+    )
+    response = _render(request, "_device.html", state=state, csrf=csrf_token)
+    auth.set_device_state(request, response, state)
+    return response
+
+
+@router.post("/login/device/poll", response_class=HTMLResponse)
+async def login_device_poll(request: Request, csrf_token: Annotated[str, Form()] = "") -> Response:
+    _require_user_mode(request)
+    if not auth.csrf_ok(request, csrf_token):
+        return _render(request, "_login_error.html", error="error_csrf")
+    state = auth.device_state(request)
+    if state is None or state.expired:
+        response = _render(request, "_device_end.html", error="device_expired", csrf=csrf_token)
+        auth.clear_device_state(request, response)
+        return response
+
+    async with _client(request, None) as kaneo:
+        try:
+            poll = await kaneo.poll_device_token(
+                _settings(request).device_client_id, state.device_code
+            )
+        except KaneoError as exc:
+            logger.warning("Device token poll failed (%s %s)", exc.status, exc.code)
+            response = _render(
+                request,
+                "_device_end.html",
+                error="kaneo_error",
+                detail=exc.message,
+                csrf=csrf_token,
+            )
+            auth.clear_device_state(request, response)
+            return response
+
+    if poll.status == "approved" and poll.access_token:
+        response = _refresh()
+        auth.set_session(request, response, poll.access_token)
+        auth.clear_device_state(request, response)
+        return response
+    if poll.status in ("denied", "expired"):
+        error = "device_denied" if poll.status == "denied" else "device_expired"
+        response = _render(request, "_device_end.html", error=error, csrf=csrf_token)
+        auth.clear_device_state(request, response)
+        return response
+
+    if poll.status == "slow_down":
+        state.interval += SLOW_DOWN_STEP
+    response = _render(request, "_device.html", state=state, csrf=csrf_token)
+    auth.set_device_state(request, response, state)
+    return response
+
+
+@router.post("/login/token", response_class=HTMLResponse)
+async def login_token(
+    request: Request,
+    csrf_token: Annotated[str, Form()] = "",
+    token: Annotated[str, Form()] = "",
+) -> Response:
+    _require_user_mode(request)
+    if not auth.csrf_ok(request, csrf_token):
+        return _render(request, "_login_error.html", error="error_csrf")
+    token = token.strip()
+    if not token or len(token) > MAX_TOKEN_LENGTH:
+        return _render(request, "_login_error.html", error="token_empty")
+    async with _client(request, token) as kaneo:
+        try:
+            await kaneo.validate_token()
+        except KaneoAuthError:
+            return _render(request, "_login_error.html", error="token_invalid")
+        except KaneoError as exc:
+            return _render(request, "_login_error.html", error="kaneo_error", detail=exc.message)
+    response = _refresh()
+    auth.set_session(request, response, token)
+    return response
+
+
+@router.post("/logout")
+async def logout(request: Request, csrf_token: Annotated[str, Form()] = "") -> Response:
+    _require_user_mode(request)
+    if not auth.csrf_ok(request, csrf_token):
+        return _render(request, "_login_error.html", error="error_csrf")
+    return _signed_out(request)

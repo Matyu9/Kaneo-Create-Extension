@@ -1,22 +1,40 @@
+{% import "_macros.html" as m %}
 {% if errors %}
-  <div class="alert" role="alert">
+  {% call m.alert("error") %}
     <ul>{% for e in errors %}<li>{{ t(e) }}</li>{% endfor %}</ul>
-    {% if detail %}<p>{{ detail }}</p>{% endif %}
-  </div>
+    {% if detail %}<p class="mt-1 font-mono text-xs">{{ detail }}</p>{% endif %}
+  {% endcall %}
 {% elif report %}
-  <div class="{{ 'success' if report.ok else 'alert' }}" role="status">
-    <h2>{{ t("result_ok") if report.ok else t("result_partial") }}{% if report.project_key %} · {{ report.project_key }}{% endif %}</h2>
-    {% if report.project_url %}<p><a href="{{ report.project_url }}" target="_blank" rel="noopener">{{ t("open_in_kaneo") }}</a></p>{% endif %}
-    <p>{{ report.tasks_created }} {{ t("tasks_created") }}, {{ report.subtasks_created }} {{ t("subtasks_created") }}</p>
-    {% if report.created %}<p>{{ t("created") }} : {{ report.created|join(", ") }}</p>{% endif %}
-    {% if report.warnings %}
-      <h3>{{ t("warnings") }}</h3>
-      <ul>{% for w in report.warnings %}{% set parts = w.split(": ", 1) %}<li><code>{{ parts[0] }}</code> : {{ t(parts[1]) }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% if report.failures %}
-      <h3>{{ t("failed") }}</h3>
-      <ul>{% for f in report.failures %}<li>{{ f }}</li>{% endfor %}</ul>
-      {% if report.auth_failed %}<p>{{ t("token_rejected") }}</p>{% endif %}
-    {% endif %}
+  <div class="card overflow-hidden" role="status">
+    <div class="flex items-start gap-3 p-4 {{ 'bg-success/5' if report.ok else 'bg-destructive/5' }}">
+      <span class="{{ 'text-success-foreground' if report.ok else 'text-destructive-foreground' }}">{{ m.icon("check" if report.ok else "error", "size-5") }}</span>
+      <div class="min-w-0 flex-1">
+        <h2 class="text-sm">{{ t("result_ok") if report.ok else t("result_partial") }}{% if report.project_key %} · <span class="font-mono">{{ report.project_key }}</span>{% endif %}</h2>
+        <p class="text-muted-foreground">{{ report.tasks_created }} {{ t("tasks_created") }}, {{ report.subtasks_created }} {{ t("subtasks_created") }}</p>
+      </div>
+    </div>
+    <div class="space-y-3 border-t p-4 empty:hidden">
+      {%- if report.project_url %}
+        <a class="btn btn-primary btn-sm w-full" href="{{ report.project_url }}" target="_blank" rel="noopener">{{ t("open_in_kaneo") }} {{ m.icon("external", "size-3.5") }}</a>
+      {% endif -%}
+      {%- if report.columns_configured or report.labels_created %}
+        <p class="text-xs text-muted-foreground">
+          {%- if report.columns_configured %}{{ report.columns_configured }} {{ t("columns_configured") }}{% endif %}
+          {%- if report.columns_configured and report.labels_created %} · {% endif %}
+          {%- if report.labels_created %}{{ report.labels_created }} {{ t("labels_created") }}{% endif -%}
+        </p>
+      {% endif -%}
+      {%- if report.warnings %}
+        {% call m.alert("warning", t("warnings")) %}
+          <ul>{% for w in report.warnings %}{% set parts = w.split(": ", 1) %}<li><code>{{ parts[0] }}</code> : {{ t(parts[1]) }}</li>{% endfor %}</ul>
+        {% endcall %}
+      {% endif -%}
+      {%- if report.failures %}
+        {% call m.alert("error", t("failed")) %}
+          <ul>{% for f in report.failures %}<li>{{ f }}</li>{% endfor %}</ul>
+          {% if report.auth_failed %}<p class="mt-1">{{ t("session_expired") if user_mode else t("token_rejected") }}</p>{% endif %}
+        {% endcall %}
+      {% endif -%}
+    </div>
   </div>
 {% endif %}

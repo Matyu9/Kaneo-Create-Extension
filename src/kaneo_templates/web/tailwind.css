@@ -1,0 +1,242 @@
+/* Tailwind source for static/app.css. Rebuild with scripts/build-css.sh.
+   Theme tokens follow Kaneo's web UI (apps/web/src/index.css) so the module looks at home
+   next to it. Dark mode follows the system preference. */
+
+@import "tailwindcss" source(none);
+@source "./templates";
+
+@font-face {
+  font-family: "Geist Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(fonts/geist-latin-ext-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Geist Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(fonts/geist-latin-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@theme inline {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-board-lane: var(--board-lane);
+  --color-board-card: var(--board-card);
+  --color-board-card-border: var(--board-card-border);
+  --color-board-card-border-hover: var(--board-card-border-hover);
+  --color-board-id: var(--board-id);
+  --color-board-title: var(--board-title);
+  --color-chip-border: var(--chip-border);
+  --color-chip-foreground: var(--chip-foreground);
+  --color-chip-muted: var(--chip-muted);
+  --color-chip-icon: var(--chip-icon);
+  --color-priority-bar: var(--priority-bar);
+  --color-priority-bar-empty: var(--priority-bar-empty);
+  --color-priority-urgent: var(--priority-urgent);
+  --color-due-overdue: var(--due-overdue);
+  --shadow-board-card: var(--board-card-shadow);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.625rem;
+  --background: var(--color-white);
+  --foreground: var(--color-neutral-800);
+  --card: var(--color-white);
+  --muted: --alpha(var(--color-black) / 4%);
+  --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, var(--color-black));
+  --accent: --alpha(var(--color-black) / 4%);
+  --primary: var(--color-neutral-800);
+  --primary-foreground: var(--color-neutral-50);
+  --border: --alpha(var(--color-black) / 8%);
+  --input: --alpha(var(--color-black) / 10%);
+  --ring: var(--color-neutral-400);
+  --destructive: var(--color-red-500);
+  --destructive-foreground: var(--color-red-700);
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-700);
+  --warning: var(--color-amber-500);
+  --warning-foreground: var(--color-amber-700);
+  --info: var(--color-blue-500);
+  --info-foreground: var(--color-blue-700);
+  --sidebar: var(--color-neutral-50);
+  --board-lane: #00000005;
+  --board-card: #ffffff;
+  --board-card-border: #00000014;
+  --board-card-border-hover: #0000002e;
+  --board-card-shadow: 0 1px 2px #0000000a;
+  --board-id: #8a8a8a;
+  --board-title: #171717;
+  --chip-border: #00000017;
+  --chip-foreground: #404040;
+  --chip-muted: #737373;
+  --chip-icon: #8a8a8a;
+  --priority-bar: #525252;
+  --priority-bar-empty: #00000021;
+  --priority-urgent: #dc2626;
+  --due-overdue: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: color-mix(in srgb, var(--color-neutral-950) 96%, var(--color-white));
+    --foreground: var(--color-neutral-100);
+    --card: color-mix(in srgb, var(--background) 98%, var(--color-white));
+    --muted: --alpha(var(--color-white) / 4%);
+    --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, var(--color-white));
+    --accent: --alpha(var(--color-white) / 4%);
+    --primary: var(--color-neutral-100);
+    --primary-foreground: var(--color-neutral-800);
+    --border: --alpha(var(--color-white) / 6%);
+    --input: --alpha(var(--color-white) / 8%);
+    --ring: var(--color-neutral-500);
+    --destructive: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
+    --destructive-foreground: var(--color-red-400);
+    --success-foreground: var(--color-emerald-400);
+    --warning-foreground: var(--color-amber-400);
+    --info-foreground: var(--color-blue-400);
+    --sidebar: color-mix(in srgb, var(--color-neutral-950) 97%, var(--color-white));
+    --board-lane: #0000001f;
+    --board-card: #1c1c1c;
+    --board-card-border: transparent;
+    --board-card-border-hover: #ffffff2e;
+    --board-card-shadow: 0 1px 2px #00000033, 0 4px 12px -4px #00000059;
+    --board-id: #707070;
+    --board-title: #ededed;
+    --chip-border: #ffffff17;
+    --chip-foreground: #cfcfcf;
+    --chip-muted: #8f8f8f;
+    --chip-icon: #8a8a8a;
+    --priority-bar: #a3a3a3;
+    --priority-bar-empty: #ffffff24;
+    --priority-urgent: #e5484d;
+    --due-overdue: #ff6467;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .label {
+    @apply flex items-center gap-1.5 text-sm font-medium text-foreground;
+  }
+  .hint {
+    @apply text-xs font-normal text-muted-foreground;
+  }
+  .input {
+    @apply h-9 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 text-sm shadow-xs
+      transition-[color,box-shadow] outline-none placeholder:text-muted-foreground
+      focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50
+      aria-invalid:border-destructive disabled:opacity-50;
+  }
+  select.input {
+    @apply appearance-none bg-no-repeat pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
+    background-position: right 0.6rem center;
+  }
+  select.input option {
+    @apply bg-card text-foreground;
+  }
+  .btn {
+    @apply inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-4
+      text-sm font-medium whitespace-nowrap transition-all outline-none
+      focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none
+      disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-primary text-primary-foreground shadow-xs hover:bg-primary/90;
+  }
+  .btn-outline {
+    @apply border border-input bg-transparent shadow-xs hover:bg-accent;
+  }
+  .btn-ghost {
+    @apply hover:bg-accent;
+  }
+  .btn-sm {
+    @apply h-8 px-3 text-[13px];
+  }
+  .card {
+    @apply rounded-xl border bg-card shadow-xs;
+  }
+  .alert {
+    @apply flex gap-2.5 rounded-lg border px-3.5 py-3 text-sm;
+  }
+  .alert-error {
+    @apply border-destructive/30 bg-destructive/5 text-destructive-foreground;
+  }
+  .alert-warning {
+    @apply border-warning/30 bg-warning/5 text-warning-foreground;
+  }
+  .alert-success {
+    @apply border-success/30 bg-success/5 text-success-foreground;
+  }
+  .alert-info {
+    @apply border-info/30 bg-info/5 text-info-foreground;
+  }
+  .chip {
+    @apply inline-flex h-6 items-center gap-1 rounded-md border border-chip-border px-1.5
+      text-xs whitespace-nowrap text-chip-foreground;
+  }
+  .badge {
+    @apply inline-flex h-5 items-center rounded-md bg-muted px-1.5 text-xs font-medium
+      text-muted-foreground tabular-nums;
+  }
+  .kbd-code {
+    @apply rounded-lg border bg-muted px-4 py-2 font-mono text-2xl font-semibold tracking-[0.3em];
+  }
+  .htmx-indicator {
+    @apply hidden;
+  }
+  .htmx-request .htmx-indicator,
+  .htmx-request.htmx-indicator {
+    @apply inline-flex;
+  }
+  .htmx-request .htmx-hide-on-request {
+    @apply hidden;
+  }
+}
