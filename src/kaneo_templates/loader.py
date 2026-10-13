@@ -56,7 +56,8 @@ def parse_template(text: str) -> Template:
 def _format_validation_error(exc: ValidationError) -> str:
     parts = []
     for err in exc.errors(include_input=False, include_url=False):
-        loc = ".".join(str(p) for p in err["loc"])
+        loc = "".join(f"[{p}]" if isinstance(p, int) else f".{p}" for p in err["loc"])
+        loc = loc.removeprefix(".")
         msg = err["msg"].removeprefix("Value error, ")
         parts.append(f"{loc}: {msg}" if loc else msg)
     return "; ".join(parts)

@@ -421,3 +421,20 @@ def test_render_text():
     assert render_text("{{project_name}} - {{ end_date }}", values) == "Gala - 24/03/2027"
     assert render_text("{single} {{}} {{{x", values) == "{single} {{}} {{{x"
     assert render_text("{{project_name}}{{project_name}}", values) == "GalaGala"
+
+
+def test_error_paths_use_brackets_for_indexes():
+    body = tpl(
+        """\
+        version: 1
+        name: X
+        tasks:
+          - title: A
+            subtasks:
+              - title: B
+                dues: -1d
+        """
+    )
+    with pytest.raises(TemplateError) as exc:
+        parse_template(body)
+    assert str(exc.value).startswith("tasks[0].subtasks[0].dues: ")
