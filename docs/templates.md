@@ -17,6 +17,8 @@ columns:
   - To do
   - In progress
   - Done
+labels:
+  logistics: "#f59e0b"
 tasks:
   - title: Book the room
     due: -30d
@@ -49,6 +51,7 @@ More examples in [`templates-examples/`](../templates-examples).
 | `description` | no | Shown under the template list. |
 | `end_date` | no | The date the `due` offsets are computed from. See below. |
 | `columns` | no | Board columns, in order. See below. |
+| `labels` | no | Colors of the labels the template creates. See below. |
 | `tasks` | no | The tasks, in creation order. A template without tasks is valid. |
 
 ### `end_date`
@@ -67,6 +70,18 @@ More examples in [`templates-examples/`](../templates-examples).
 
 Each name must give a non-empty Kaneo slug (lowercase, other characters than letters and digits become `-`), distinct from the others and other than `planned` or `archived`, which Kaneo reserves.
 
+### `labels`
+
+A mapping from label name to a hex color (`#rgb` or `#rrggbb`):
+
+```yaml
+labels:
+  logistics: "#f59e0b"
+  governance: "#8b5cf6"
+```
+
+Quote the colors: `#` starts a comment in YAML. A label missing from this section is created grey (`#6b7280`). Labels that already exist in the workspace keep their color. Listing a label here does not create it: only the labels used by tasks are created.
+
 ### Tasks and subtasks
 
 | Key | Default | Description |
@@ -75,7 +90,7 @@ Each name must give a non-empty Kaneo slug (lowercase, other characters than let
 | `description` | empty | Plain text. |
 | `priority` | `no-priority` | `no-priority`, `low`, `medium`, `high` or `urgent`. |
 | `column` | first column | When the template defines `columns`, must be one of them. Otherwise matched by name or slug against the project columns; an unknown column puts the task in the first column with a warning. |
-| `labels` | none | Workspace label names. Missing labels are created (grey). |
+| `labels` | none | Workspace label names. Missing labels are created, with the color from the `labels` section or grey. |
 | `due` | no due date | Offset from the end date, see below. |
 | `subtasks` | none | Same keys, except `subtasks` (one level only). A subtask without `column` goes to its parent's column. |
 

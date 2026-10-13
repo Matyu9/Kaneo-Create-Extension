@@ -309,7 +309,9 @@ class Creator:
             if name not in ids:
                 label = await self._step(
                     "create label",
-                    self.client.create_label(workspace_id, name, DEFAULT_LABEL_COLOR),
+                    self.client.create_label(
+                        workspace_id, name, template.label_color(name) or DEFAULT_LABEL_COLOR
+                    ),
                 )
                 ids[name] = label.id
                 self.report.labels_created += 1

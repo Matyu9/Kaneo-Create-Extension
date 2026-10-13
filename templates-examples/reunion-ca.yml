@@ -4,6 +4,8 @@ description: Préparation, tenue et suivi d'une réunion de CA
 end_date:
   required: true
   label: Date de la réunion
+labels:
+  gouvernance: "#8b5cf6"
 tasks:
   - title: Fixer l'ordre du jour avec la présidence
     due: -21d

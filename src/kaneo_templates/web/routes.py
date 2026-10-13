@@ -12,7 +12,13 @@ from fastapi.templating import Jinja2Templates
 
 from kaneo_templates import auth
 from kaneo_templates.config import AuthMode, Settings
-from kaneo_templates.creator import Creator, build_plan, plan_board, project_key
+from kaneo_templates.creator import (
+    DEFAULT_LABEL_COLOR,
+    Creator,
+    build_plan,
+    plan_board,
+    project_key,
+)
 from kaneo_templates.i18n import translator
 from kaneo_templates.kaneo_client import KaneoAuthError, KaneoClient, KaneoError
 from kaneo_templates.loader import LoadResult, load_templates
@@ -159,6 +165,7 @@ async def preview(
         board=plan_board(plan),
         key=project_key(name.strip()[:MAX_NAME_LENGTH]),
         template=selected,
+        default_label_color=DEFAULT_LABEL_COLOR,
     )
 
 

@@ -45,7 +45,7 @@
             {% if item.weekend %}<span class="chip border-warning/40 text-warning-foreground">{{ t("weekend") }}</span>{% endif %}
             {% if item.past %}<span class="chip border-due-overdue/40 text-due-overdue">{{ t("past") }}</span>{% endif %}
             {% if card.subtask_count %}<span class="chip">{{ m.icon("tree", "size-3 text-chip-icon") }}0/{{ card.subtask_count }}</span>{% endif %}
-            {% for label in item.labels %}<span class="chip"><span class="size-2 rounded-full bg-chip-icon"></span>{{ label }}</span>{% endfor %}
+            {% for label in item.labels %}<span class="chip">{{ m.label_dot(template.label_color(label) or default_label_color) }}{{ label }}</span>{% endfor %}
           </div>
           {% if card.column_missing %}
             <p class="mt-2 flex items-center gap-1 text-xs text-warning-foreground">{{ m.icon("alert", "size-3") }}<code class="font-mono">{{ item.column }}</code> : {{ t("column_missing") }}</p>

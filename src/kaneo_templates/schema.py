@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from typing import Annotated, Literal
 
@@ -52,6 +53,17 @@ def _parse_offset(value: object) -> Offset | None:
 
 DueOffset = Annotated[Offset | None, BeforeValidator(_parse_offset)]
 
+_HEX_COLOR = re.compile(r"#(?:[0-9a-f]{3}|[0-9a-f]{6})")
+
+
+def _parse_color(value: object) -> object:
+    if not isinstance(value, str) or not _HEX_COLOR.fullmatch(value.strip().lower()):
+        raise ValueError("label color must be a hex color such as '#f59e0b'")
+    return value.strip().lower()
+
+
+LabelColor = Annotated[str, BeforeValidator(_parse_color)]
+
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -81,6 +93,7 @@ class Template(_Strict):
     description: str | None = None
     end_date: EndDateSpec | None = None
     columns: list[NonEmptyStr] | None = None
+    labels: dict[NonEmptyStr, LabelColor] = Field(default_factory=dict)
     tasks: list[TaskSpec] = Field(default_factory=list)
 
     @field_validator("version", mode="before")
@@ -142,6 +155,10 @@ class Template(_Strict):
     @property
     def end_date_required(self) -> bool:
         return self.end_date is not None and self.end_date.required
+
+    def label_color(self, name: str) -> str | None:
+        """Color set for a label in the `labels` section, if any."""
+        return self.labels.get(name)
 
     @property
     def all_labels(self) -> list[str]:

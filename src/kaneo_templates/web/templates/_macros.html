@@ -32,6 +32,11 @@
 {%- endif %}
 {%- endmacro %}
 
+{# A fill attribute, not a style: the CSP forbids inline styles. #}
+{% macro label_dot(color) -%}
+<svg class="size-2 shrink-0" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="4" fill="{{ color }}"/></svg>
+{%- endmacro %}
+
 {% macro alert(kind, title=None) -%}
 <div class="alert alert-{{ kind }}" role="{{ 'alert' if kind == 'error' else 'status' }}">
   {{ icon({"error": "error", "warning": "alert", "success": "check", "info": "info"}[kind], "size-4 mt-0.5") }}

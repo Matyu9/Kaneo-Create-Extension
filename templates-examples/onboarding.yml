@@ -8,6 +8,8 @@ columns:
   - Avant l'arrivée
   - Première semaine
   - Fait
+labels:
+  informatique: "#3b82f6"
 tasks:
   - title: Préparer le poste de travail
     due: -5b

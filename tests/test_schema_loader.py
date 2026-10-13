@@ -325,3 +325,42 @@ def test_get_never_resolves_paths(tmp_path):
     assert result.get("evenement") is not None
     for attempt in ["../evenement", "evenement.yml", "/etc/passwd", "..", ""]:
         assert result.get(attempt) is None
+
+
+# Label colors
+
+
+def test_label_colors_are_normalized():
+    t = parse_template(
+        tpl(
+            """\
+            version: 1
+            name: X
+            labels:
+              logistique: "#F59E0B"
+              team: " #abc "
+            tasks:
+              - title: A
+                labels: [logistique]
+            """
+        )
+    )
+    assert t.labels == {"logistique": "#f59e0b", "team": "#abc"}
+    assert t.label_color("logistique") == "#f59e0b"
+    assert t.label_color("other") is None
+
+
+@pytest.mark.parametrize("color", ["red", "#12", "#1234567", "f59e0b", "123", "[1]", "#ggg"])
+def test_invalid_label_color(color):
+    with pytest.raises(TemplateError, match="labels"):
+        parse_template(f"version: 1\nname: X\nlabels:\n  a: {color!r}\n")
+
+
+def test_label_colors_without_tasks_are_valid():
+    t = parse_template('version: 1\nname: X\nlabels:\n  a: "#000000"\n')
+    assert t.all_labels == []
+
+
+def test_labels_section_must_be_a_mapping():
+    with pytest.raises(TemplateError, match="labels"):
+        parse_template("version: 1\nname: X\nlabels: [a, b]\n")

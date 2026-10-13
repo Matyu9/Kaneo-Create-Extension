@@ -8,6 +8,8 @@ columns:
   - À faire
   - En cours
   - Terminé
+labels:
+  logistique: "#f59e0b"
 tasks:
   - title: Réserver la salle
     due: -30d

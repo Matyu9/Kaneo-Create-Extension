@@ -414,3 +414,29 @@ def test_board_empty_template():
     template = parse_template("version: 1\nname: Empty\ncolumns: [A, B]\n")
     board = plan_board(build_plan(template, None, date(2030, 1, 1)))
     assert [(c.name, c.cards) for c in board] == [("A", []), ("B", [])]
+
+
+COLORED = parse_template(
+    """\
+version: 1
+name: Colored
+labels:
+  logistics: "#f59e0b"
+tasks:
+  - title: A
+    labels: [logistics, team]
+"""
+)
+
+
+async def test_new_labels_use_template_colors():
+    fake, report = await run(template=COLORED, end=None)
+    created = {b["name"]: b["color"] for m, p, b in fake.writes if p == "label"}
+    assert created == {"logistics": "#f59e0b", "team": "#6b7280"}
+    assert report.labels_created == 2
+
+
+async def test_existing_labels_keep_their_color():
+    fake, _ = await run({"existing_labels": ["logistics"]}, template=COLORED, end=None)
+    assert [b["name"] for m, p, b in fake.writes if p == "label"] == ["team"]
+    assert not [p for m, p, b in fake.writes if m == "PUT" and p == "label/lbl-logistics"]

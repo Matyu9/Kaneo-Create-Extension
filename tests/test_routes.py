@@ -287,6 +287,15 @@ def test_preview_numbers_without_name(client):
     assert "#-1" in html
 
 
+def test_preview_label_colors(client, templates_dir):
+    html = client.get("/preview", params={"template": "evenement"}).text
+    assert 'fill="#f59e0b"' in html
+    (templates_dir / "grey.yml").write_text(
+        "version: 1\nname: G\ntasks:\n  - title: A\n    labels: [plain]\n"
+    )
+    assert 'fill="#6b7280"' in client.get("/preview", params={"template": "grey"}).text
+
+
 def test_preview_priority_icons(client):
     html = client.get("/preview", params={"template": "evenement"}).text
     assert "Priorité : Haute" in html
