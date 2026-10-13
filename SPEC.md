@@ -42,6 +42,7 @@ Hors périmètre v1 : éditeur de modèles dans l'UI, historique des créations,
 | `APP_LANG` | `fr` | Langue de l'interface : `fr` ou `en` |
 | `ROOT_PATH` | vide | Préfixe d'URL si l'appli est servie sous un sous-chemin |
 | `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` | — | Protection HTTP Basic facultative, désactivée si vides |
+| `HOLIDAYS` | vide | Calendrier de jours fériés pour les jours ouvrés : `fr` ou `fr-alsace-moselle` |
 | `LOG_LEVEL` | `info` | Niveau de logs |
 
 Au démarrage, l'application valide la configuration et refuse de démarrer avec un message clair si une variable requise manque.
@@ -128,7 +129,7 @@ Champs :
 Syntaxe de `due` :
 
 - `-7d` : 7 jours calendaires avant la date de fin. `+3d` : 3 jours après. `0d` : le jour même.
-- `-5b` / `+2b` : jours ouvrés (lundi à vendredi), sans jours fériés en v1.
+- `-5b` / `+2b` : jours ouvrés (lundi à vendredi), hors jours fériés du calendrier choisi par `HOLIDAYS` (`fr`, `fr-alsace-moselle`) ; sans jours fériés si la variable est vide.
 - Les formes `J-7` et `J+3` sont acceptées comme alias.
 
 Règles de calcul :
@@ -272,7 +273,7 @@ Critère de fin de v1 : depuis une instance Kaneo vierge, un utilisateur lance l
 ## 13. Pour plus tard
 
 - Éditeur de modèles dans l'UI, import et export de modèles.
-- Jours fériés par pays pour les jours ouvrés.
+- Calendriers de jours fériés d'autres pays.
 - Date de début de projet comme second point d'ancrage.
 - Attribution des tâches par rôle, associée à des membres choisis à la création.
 - Connexion OIDC directe.

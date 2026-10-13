@@ -476,3 +476,19 @@ async def test_creation_sends_rendered_titles():
     tasks = [b for m, p, b in fake.writes if p == "task/p1"]
     assert [b["title"] for b in tasks] == ["Affiche Gala", "Gala / impression"]
     assert tasks[0]["description"] == "Date : 24/03/2027"
+
+
+def test_plan_flags_holidays():
+    from kaneo_templates.holidays import HolidayCalendar
+
+    template = parse_template(
+        "version: 1\nname: H\nend_date:\ntasks:\n  - title: A\n    due: -7d\n"
+        "  - title: B\n    due: -1b\n"
+    )
+    plan = build_plan(template, date(2026, 5, 15), date(2026, 1, 1))
+    assert [i.holiday for i in plan.items] == [None, None]
+    plan = build_plan(template, date(2026, 5, 15), date(2026, 1, 1), holidays=HolidayCalendar("fr"))
+    assert [(i.due, i.holiday) for i in plan.items] == [
+        (date(2026, 5, 8), "victory_day"),
+        (date(2026, 5, 13), None),  # Thursday 14 May is Ascension
+    ]

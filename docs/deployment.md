@@ -39,6 +39,7 @@ The container runs as UID 10001 with a read-only file system and no capability. 
 | `APP_LANG` | `fr` | `fr` or `en` |
 | `ROOT_PATH` | — | URL prefix when served under a sub-path, e.g. `/templates` |
 | `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` | — | Optional HTTP Basic protection, both or neither |
+| `HOLIDAYS` | — | Public holidays skipped by business-day offsets (`-5b`): `fr` or `fr-alsace-moselle` |
 | `LOG_LEVEL` | `info` | `critical`, `error`, `warning`, `info` or `debug` |
 | `HOST` / `PORT` | `0.0.0.0` / `8000` | Listening address |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1,::1` | Proxies whose `X-Forwarded-*` headers are trusted (read by uvicorn) |

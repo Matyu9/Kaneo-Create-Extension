@@ -7,6 +7,8 @@ from enum import StrEnum
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from kaneo_templates.holidays import CALENDARS
+
 MIN_SECRET_KEY_LENGTH = 32
 LOG_LEVELS = ("critical", "error", "warning", "info", "debug")
 LANGS = ("fr", "en")
@@ -38,6 +40,7 @@ class Settings:
     basic_auth_user: str | None
     basic_auth_password: str | None
     log_level: str
+    holidays: str | None = None
 
     @property
     def basic_auth_enabled(self) -> bool:
@@ -125,6 +128,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     if (basic_user is None) != (basic_password is None):
         errors.append("BASIC_AUTH_USER and BASIC_AUTH_PASSWORD must be set together.")
 
+    holidays = (_get(env, "HOLIDAYS") or "").lower() or None
+    if holidays is not None and holidays not in CALENDARS:
+        errors.append(f"HOLIDAYS must be one of: {', '.join(CALENDARS)} (or empty).")
+
     if errors or base_url is None:
         raise ConfigError(errors)
 
@@ -142,4 +149,5 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         basic_auth_user=basic_user,
         basic_auth_password=basic_password,
         log_level=log_level,
+        holidays=holidays,
     )

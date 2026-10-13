@@ -59,7 +59,7 @@ Référence complète : [docs/templates.md](docs/templates.md) (en anglais). Exe
 
 ## Limites connues
 
-- Les jours ouvrés vont du lundi au vendredi, sans jours fériés.
+- Les jours fériés ne sont disponibles que pour la France (`HOLIDAYS=fr` ou `fr-alsace-moselle`).
 - Rien n'est annulé quand une création s'arrête en cours de route : le rapport indique ce qui a été créé et où l'opération s'est arrêtée.
 - Les modèles s'éditent sous forme de fichiers ; pas d'éditeur dans l'interface.
 - Les échéances sont fixées à midi UTC ; les tâches ne sont assignées à personne.

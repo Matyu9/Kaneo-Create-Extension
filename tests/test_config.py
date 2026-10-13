@@ -106,3 +106,11 @@ def test_app_refuses_to_start_without_config(monkeypatch, capsys):
 def test_healthz():
     client = TestClient(create_app(load_settings(BASE)))
     assert client.get("/healthz").json() == {"status": "ok"}
+
+
+def test_holidays_setting():
+    assert load_settings(BASE).holidays is None
+    assert load_settings({**BASE, "HOLIDAYS": "FR"}).holidays == "fr"
+    assert load_settings({**BASE, "HOLIDAYS": "fr-alsace-moselle"}).holidays == "fr-alsace-moselle"
+    with pytest.raises(ConfigError, match="HOLIDAYS must be one of"):
+        load_settings({**BASE, "HOLIDAYS": "be"})

@@ -43,6 +43,7 @@
               <span class="chip text-chip-muted">{{ m.icon("calendar", "size-3 text-chip-icon") }}{{ t("no_due") }}</span>
             {% endif %}
             {% if item.weekend %}<span class="chip border-warning/40 text-warning-foreground">{{ t("weekend") }}</span>{% endif %}
+            {% if item.holiday %}<span class="chip border-warning/40 text-warning-foreground">{{ t("holiday") }} · {{ t("holiday_" ~ item.holiday) }}</span>{% endif %}
             {% if item.past %}<span class="chip border-due-overdue/40 text-due-overdue">{{ t("past") }}</span>{% endif %}
             {% if card.subtask_count %}<span class="chip">{{ m.icon("tree", "size-3 text-chip-icon") }}0/{{ card.subtask_count }}</span>{% endif %}
             {% for label in item.labels %}<span class="chip">{{ m.label_dot(template.label_color(label) or default_label_color) }}{{ label }}</span>{% endfor %}

@@ -13,6 +13,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 
+from kaneo_templates.holidays import NO_HOLIDAYS, HolidayCalendar
 from kaneo_templates.kaneo_client import Column, KaneoAuthError, KaneoClient, KaneoError
 from kaneo_templates.scheduling import compute_due, is_weekend
 from kaneo_templates.schema import SubtaskSpec, Template, column_slug, render_text
@@ -35,6 +36,7 @@ class PlannedItem:
     labels: list[str]
     due: date | None
     weekend: bool = False
+    holiday: str | None = None
     past: bool = False
     parent_index: int | None = None
 
@@ -66,6 +68,7 @@ def build_plan(
     *,
     project_name: str = "",
     date_format: str = "%d/%m/%Y",
+    holidays: HolidayCalendar = NO_HOLIDAYS,
 ) -> Plan:
     columns = list(template.columns) if template.columns else list(KANEO_DEFAULT_COLUMNS)
     items: list[PlannedItem] = []
@@ -75,12 +78,12 @@ def build_plan(
         "end_date": end_date.strftime(date_format) if end_date else "",
     }
     for i, task in enumerate(template.tasks):
-        parent = _planned(f"tasks[{i}]", task, None, end_date, today, values)
+        parent = _planned(f"tasks[{i}]", task, None, end_date, today, values, holidays)
         items.append(parent)
         parent_index = len(items) - 1
         for j, sub in enumerate(task.subtasks):
             child = _planned(
-                f"tasks[{i}].subtasks[{j}]", sub, parent_index, end_date, today, values
+                f"tasks[{i}].subtasks[{j}]", sub, parent_index, end_date, today, values, holidays
             )
             if child.column is None:
                 child.column = parent.column
@@ -99,8 +102,9 @@ def _planned(
     end: date | None,
     today: date,
     values: dict[str, str],
+    holidays: HolidayCalendar,
 ) -> PlannedItem:
-    due = compute_due(end, spec.due)
+    due = compute_due(end, spec.due, holidays)
     return PlannedItem(
         path=path,
         title=render_text(spec.title, values),
@@ -110,6 +114,7 @@ def _planned(
         labels=list(spec.labels),
         due=due,
         weekend=due is not None and is_weekend(due),
+        holiday=holidays.name(due) if due is not None else None,
         past=due is not None and due < today,
         parent_index=parent,
     )

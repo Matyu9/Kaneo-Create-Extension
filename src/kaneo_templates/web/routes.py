@@ -19,6 +19,7 @@ from kaneo_templates.creator import (
     plan_board,
     project_key,
 )
+from kaneo_templates.holidays import HolidayCalendar
 from kaneo_templates.i18n import translator
 from kaneo_templates.kaneo_client import KaneoAuthError, KaneoClient, KaneoError
 from kaneo_templates.loader import LoadResult, load_templates
@@ -82,8 +83,12 @@ def _signed_out(request: Request) -> Response:
     return response
 
 
-def _date_format(request: Request) -> str:
-    return translator(_settings(request).app_lang)("date_format")
+def _plan_options(request: Request) -> dict:
+    settings = _settings(request)
+    return {
+        "date_format": translator(settings.app_lang)("date_format"),
+        "holidays": HolidayCalendar(settings.holidays),
+    }
 
 
 def _parse_date(value: str | None) -> date | None:
@@ -162,9 +167,7 @@ async def preview(
         return _render(request, "_preview.html", plan=None)
     end = _parse_date(end_date) if selected.end_date else None
     name = name.strip()[:MAX_NAME_LENGTH]
-    plan = build_plan(
-        selected, end, date.today(), project_name=name, date_format=_date_format(request)
-    )
+    plan = build_plan(selected, end, date.today(), project_name=name, **_plan_options(request))
     return _render(
         request,
         "_preview.html",
@@ -227,9 +230,7 @@ async def create(
         if errors or selected is None:
             return _render(request, "_result.html", errors=errors, report=None)
 
-        plan = build_plan(
-            selected, end, date.today(), project_name=name, date_format=_date_format(request)
-        )
+        plan = build_plan(selected, end, date.today(), project_name=name, **_plan_options(request))
         report = await Creator(kaneo, settings.kaneo_public_url).run(
             workspace_id, selected, name, plan
         )

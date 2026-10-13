@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from kaneo_templates.holidays import CALENDARS
 from kaneo_templates.i18n import MESSAGES, translator
 
 SRC = Path(__file__).parent.parent / "src" / "kaneo_templates"
@@ -38,6 +39,8 @@ def used_keys():
         keys |= set(re.findall(r""": ([a-z_]+)["']\)""", text))
     keys |= {f"priority_{p}" for p in ("no-priority", "low", "medium", "high", "urgent")}
     keys |= {"device_denied", "device_expired"}
+    for calendar in CALENDARS.values():
+        keys |= {f"holiday_{key}" for key in calendar(2026).values()}
     return keys
 
 

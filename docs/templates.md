@@ -119,7 +119,7 @@ Spaces inside the braces are allowed (`{{ end_date }}`). Any other name is rejec
 |---|---|
 | `-7d` / `+3d` | 7 calendar days before / 3 after the end date |
 | `0d` | the end date itself |
-| `-5b` / `+2b` | 5 business days before / 2 after (Monday to Friday, no public holidays) |
+| `-5b` / `+2b` | 5 business days before / 2 after (Monday to Friday, minus the public holidays of `HOLIDAYS` when set) |
 | `J-7` / `J+3` / `J0` | aliases of `-7d` / `+3d` / `0d` |
 
 - A sign is required for non-zero offsets: `7d` is rejected.
@@ -127,7 +127,7 @@ Spaces inside the braces are allowed (`{{ end_date }}`). Any other name is rejec
 - Business days count from the end date whatever its weekday: from a Saturday, `+1b` is Monday and `-1b` is Friday.
 - A YAML number (`due: -7`) is rejected: write `-7d`.
 
-The preview flags due dates that fall on a weekend or in the past; neither blocks the creation. Due dates are sent to Kaneo at noon UTC so that they show on the same day in every time zone.
+The preview flags due dates that fall on a weekend, on a public holiday or in the past; neither blocks the creation. Due dates are sent to Kaneo at noon UTC so that they show on the same day in every time zone.
 
 ## Files
 

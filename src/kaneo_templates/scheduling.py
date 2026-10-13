@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Container
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal
@@ -50,14 +51,14 @@ def parse_due(value: str) -> Offset:
     return Offset(-n if match["sign"] == "-" else n, unit)
 
 
-def apply_offset(end: date, offset: Offset) -> date:
+def apply_offset(end: date, offset: Offset, holidays: Container[date] = ()) -> date:
     if offset.unit == "d":
         return end + timedelta(days=offset.days)
-    return add_business_days(end, offset.days)
+    return add_business_days(end, offset.days, holidays)
 
 
-def add_business_days(start: date, n: int) -> date:
-    """Move `n` working days (Monday to Friday) from `start`.
+def add_business_days(start: date, n: int, holidays: Container[date] = ()) -> date:
+    """Move `n` working days (Monday to Friday, minus `holidays`) from `start`.
 
     Counting starts from `start` whatever its weekday: from a Saturday, `+1` is the
     next Monday and `-1` the previous Friday. `0` returns `start` unchanged.
@@ -67,7 +68,7 @@ def add_business_days(start: date, n: int) -> date:
     current = start
     while remaining:
         current += timedelta(days=step)
-        if not is_weekend(current):
+        if not is_weekend(current) and current not in holidays:
             remaining -= 1
     return current
 
@@ -76,11 +77,13 @@ def is_weekend(d: date) -> bool:
     return d.weekday() >= 5
 
 
-def compute_due(end: date | None, offset: Offset | None) -> date | None:
+def compute_due(
+    end: date | None, offset: Offset | None, holidays: Container[date] = ()
+) -> date | None:
     """Due date for a task, or None when there is no offset or no end date."""
     if end is None or offset is None:
         return None
-    return apply_offset(end, offset)
+    return apply_offset(end, offset, holidays)
 
 
 def to_kaneo_datetime(d: date) -> str:

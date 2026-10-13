@@ -97,3 +97,7 @@ Tailwind CSS v4, the framework of Kaneo's web UI, with Kaneo's theme tokens (`ap
 ## D20. Board preview
 
 The preview shows the board as it will be created: one lane per column, cards placed with the same rule as the creation (`plan_board` mirrors `Creator._column_for`), numbered in creation order (top-level tasks, then subtasks) with the key derived from the project name. That key may end up with a suffix when it is already taken in the workspace.
+
+## D21. Public holidays
+
+`HOLIDAYS` selects a calendar computed locally (no dependency, no network): `fr` (the 11 national holidays) or `fr-alsace-moselle` (plus Good Friday and 26 December). Easter uses the anonymous Gregorian algorithm. Holidays are skipped by business-day offsets only; calendar-day offsets and `0b` may land on a holiday, which the preview flags with the holiday name.

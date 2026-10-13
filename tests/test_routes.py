@@ -231,6 +231,17 @@ def test_preview_weekend_flag(client):
     assert "week-end" in html
 
 
+def test_preview_holidays(templates_dir, kaneo):
+    (templates_dir / "h.yml").write_text(
+        "version: 1\nname: H\nend_date:\ntasks:\n  - title: A\n    due: -7d\n"
+    )
+    params = {"template": "h", "end_date": "2026-05-15"}
+    plain = make_client(templates_dir).get("/preview", params=params).text
+    assert "férié" not in plain
+    html = make_client(templates_dir, HOLIDAYS="fr").get("/preview", params=params).text
+    assert "férié · Victoire 1945" in html
+
+
 def test_preview_past_dates(client):
     html = client.get("/preview", params={"template": "evenement", "end_date": "2000-01-10"}).text
     assert "date passée" in html
