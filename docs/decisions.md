@@ -101,3 +101,7 @@ The preview shows the board as it will be created: one lane per column, cards pl
 ## D21. Public holidays
 
 `HOLIDAYS` selects a calendar computed locally (no dependency, no network): `fr` (the 11 national holidays) or `fr-alsace-moselle` (plus Good Friday and 26 December). Easter uses the anonymous Gregorian algorithm. Holidays are skipped by business-day offsets only; calendar-day offsets and `0b` may land on a holiday, which the preview flags with the holiday name.
+
+## D22. Remembered choices
+
+After each creation, the workspace and template are kept in a `kt_last` cookie (one year, `HttpOnly`, base64url JSON) and preselected on the next visit. They are checked against the current lists, so a removed template or a workspace the user no longer sees falls back to the first template and `KANEO_WORKSPACE_ID`. A cookie rather than browser storage keeps the page free of JavaScript of its own.

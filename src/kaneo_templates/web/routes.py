@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import binascii
+import json
 import logging
 import time
 from datetime import date
@@ -26,6 +29,8 @@ from kaneo_templates.loader import LoadResult, load_templates
 
 logger = logging.getLogger(__name__)
 
+LAST_CHOICE_COOKIE = "kt_last"
+LAST_CHOICE_MAX_AGE = 365 * 24 * 3600
 MAX_NAME_LENGTH = 200
 MAX_TOKEN_LENGTH = 4096
 # RFC 8628 §3.5: add 5 seconds to the polling interval on `slow_down`.
@@ -91,6 +96,37 @@ def _plan_options(request: Request) -> dict:
     }
 
 
+def _last_choice(request: Request) -> tuple[str | None, str | None]:
+    """Workspace and template of the last creation, as remembered by this browser."""
+    try:
+        raw = base64.urlsafe_b64decode(request.cookies.get(LAST_CHOICE_COOKIE, ""))
+        data = json.loads(raw)
+    except (binascii.Error, ValueError):
+        return None, None
+    if not isinstance(data, dict):
+        return None, None
+    workspace, template = data.get("workspace"), data.get("template")
+    return (
+        workspace if isinstance(workspace, str) else None,
+        template if isinstance(template, str) else None,
+    )
+
+
+def _remember_choice(request: Request, response: Response, workspace: str, template: str) -> None:
+    response.set_cookie(
+        LAST_CHOICE_COOKIE,
+        # base64url keeps the value free of characters that cookies would quote.
+        base64.urlsafe_b64encode(
+            json.dumps({"workspace": workspace, "template": template}).encode()
+        ).decode(),
+        max_age=LAST_CHOICE_MAX_AGE,
+        path=_settings(request).root_path or "/",
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+    )
+
+
 def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
@@ -123,7 +159,14 @@ async def index(request: Request) -> Response:
 
     loaded = _templates(request)
     template_ids = sorted(loaded.templates)
-    first_id = template_ids[0] if template_ids else None
+    last_workspace, last_template = _last_choice(request)
+    selected_id = (
+        last_template if last_template in loaded.templates else next(iter(template_ids), None)
+    )
+    workspace_ids = {w.id for w in workspaces}
+    selected_workspace = (
+        last_workspace if last_workspace in workspace_ids else _settings(request).kaneo_workspace_id
+    )
     return _page(
         request,
         "index.html",
@@ -133,8 +176,9 @@ async def index(request: Request) -> Response:
         token_rejected=token_rejected,
         loaded=loaded,
         template_ids=template_ids,
-        selected_id=first_id,
-        selected=loaded.get(first_id) if first_id else None,
+        selected_id=selected_id,
+        selected=loaded.get(selected_id) if selected_id else None,
+        selected_workspace=selected_workspace,
         end_date="",
     )
 
@@ -244,6 +288,7 @@ async def create(
         len(report.failures),
     )
     response = _render(request, "_result.html", errors=[], report=report)
+    _remember_choice(request, response, workspace_id, template)
     if report.auth_failed and _user_mode(request):
         # Keep the report on screen; the next request goes to the sign-in page.
         auth.clear_session(request, response)

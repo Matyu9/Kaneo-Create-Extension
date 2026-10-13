@@ -27,7 +27,7 @@
         <label class="label" for="workspace_id">{{ t("workspace") }}</label>
         <select class="input" id="workspace_id" name="workspace_id" required>
           {% for w in workspaces %}
-            <option value="{{ w.id }}" {% if w.id == settings.kaneo_workspace_id %}selected{% endif %}>{{ w.name }}</option>
+            <option value="{{ w.id }}" {% if w.id == selected_workspace %}selected{% endif %}>{{ w.name }}</option>
           {% endfor %}
         </select>
       </div>

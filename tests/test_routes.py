@@ -521,6 +521,72 @@ def test_create_kaneo_unreachable(templates_dir):
         assert "Impossible de lire les workspaces" in client.post("/create", data=data).text
 
 
+# Last choice
+
+
+def encode_choice(value):
+    return base64.urlsafe_b64encode(value.encode()).decode()
+
+
+def decode_choice(value):
+    return json.loads(base64.urlsafe_b64decode(value))
+
+
+def remember(client, workspace, template):
+    client.cookies.set(
+        "kt_last", encode_choice(json.dumps({"workspace": workspace, "template": template}))
+    )
+
+
+def test_create_remembers_workspace_and_template(client, kaneo, templates_dir):
+    mock_simple_creation(kaneo)
+    write_simple(templates_dir)
+    data = {"csrf_token": csrf(client), "workspace_id": "w2", "template": "simple", "name": "X"}
+    kaneo.get("/workspace").respond(json=WORKSPACES)
+    response = client.post("/create", data=data)
+    assert decode_choice(response.cookies["kt_last"]) == {"workspace": "w2", "template": "simple"}
+    html = client.get("/").text
+    assert '<option value="w2" selected>' in html
+    assert '<option value="simple" selected>' in html
+
+
+def test_failed_validation_is_not_remembered(client, kaneo):
+    data = {"csrf_token": csrf(client), "workspace_id": "w9", "template": "onboarding", "name": ""}
+    assert "kt_last" not in client.post("/create", data=data).cookies
+
+
+def test_remembered_template_drives_the_fields(client):
+    remember(client, "w1", "onboarding")
+    html = client.get("/").text
+    assert '<option value="onboarding" selected>' in html
+    assert "Date d&#39;arrivée" in html
+
+
+def test_unknown_remembered_values_fall_back(templates_dir, kaneo):
+    client = make_client(templates_dir, KANEO_WORKSPACE_ID="w2")
+    remember(client, "gone", "deleted-template")
+    html = client.get("/").text
+    assert '<option value="w2" selected>' in html
+    assert '<option value="evenement" selected>' in html
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "not base64!",
+        encode_choice("not json"),
+        encode_choice("[1, 2]"),
+        encode_choice('{"workspace": 3, "template": null}'),
+        encode_choice('{"template": "../evenement"}'),
+    ],
+)
+def test_malformed_remembered_choice_is_ignored(client, value):
+    client.cookies.set("kt_last", value)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert '<option value="evenement" selected>' in response.text
+
+
 # Basic Auth
 
 
