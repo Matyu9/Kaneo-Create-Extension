@@ -96,6 +96,23 @@ Quote the colors: `#` starts a comment in YAML. A label missing from this sectio
 
 Unknown keys are rejected, to catch typos such as `dues:`.
 
+## Variables
+
+Titles and descriptions may contain placeholders, replaced when the project is created:
+
+| Placeholder | Replaced by |
+|---|---|
+| `{{project_name}}` | The project name entered in the form |
+| `{{end_date}}` | The end date (`24/03/2027` in French, `2027-03-24` in English), or nothing when no date was entered |
+
+```yaml
+tasks:
+  - title: "Write the minutes of {{project_name}}"
+    description: "Meeting of {{end_date}}"
+```
+
+Spaces inside the braces are allowed (`{{ end_date }}`). Any other name is rejected when the template loads, and `{{end_date}}` requires an `end_date` section. Quote titles that start with `{`: YAML reads them as mappings otherwise.
+
 ## `due` syntax
 
 | Value | Meaning |

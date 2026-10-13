@@ -223,7 +223,7 @@ def test_preview_shows_weekday(client):
 def test_preview_weekday_in_english(templates_dir, kaneo):
     client = make_client(templates_dir, APP_LANG="en")
     html = client.get("/preview", params={"template": "evenement", "end_date": "2030-06-14"}).text
-    assert "Wed 15/05/2030" in html
+    assert "Wed 2030-05-15" in html
 
 
 def test_preview_weekend_flag(client):
@@ -285,6 +285,27 @@ def test_preview_numbers_cards_with_project_key(client):
 def test_preview_numbers_without_name(client):
     html = client.get("/preview", params={"template": "evenement"}).text
     assert "#-1" in html
+
+
+def test_preview_renders_variables(client, templates_dir):
+    (templates_dir / "vars.yml").write_text(
+        "version: 1\nname: V\nend_date:\ntasks:\n  - title: 'Bilan {{project_name}}'\n"
+        "    description: 'Avant le {{end_date}}'\n"
+    )
+    params = {"template": "vars", "name": "Gala <b>", "end_date": "2027-03-24"}
+    html = client.get("/preview", params=params).text
+    assert "Bilan Gala &lt;b&gt;" in html
+    assert "Avant le 24/03/2027" in html
+
+
+def test_create_renders_variables(client, kaneo, templates_dir):
+    route = mock_simple_creation(kaneo)
+    (templates_dir / "vars.yml").write_text(
+        "version: 1\nname: V\ntasks:\n  - title: 'Bilan {{project_name}}'\n"
+    )
+    data = {"csrf_token": csrf(client), "workspace_id": "w1", "template": "vars", "name": " Gala "}
+    assert "Projet créé" in client.post("/create", data=data).text
+    assert json.loads(route.calls.last.request.content)["title"] == "Bilan Gala"
 
 
 def test_preview_label_colors(client, templates_dir):

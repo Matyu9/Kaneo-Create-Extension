@@ -364,3 +364,60 @@ def test_label_colors_without_tasks_are_valid():
 def test_labels_section_must_be_a_mapping():
     with pytest.raises(TemplateError, match="labels"):
         parse_template("version: 1\nname: X\nlabels: [a, b]\n")
+
+
+# Variables
+
+
+def test_variables_are_accepted():
+    t = parse_template(
+        tpl(
+            """\
+            version: 1
+            name: X
+            end_date:
+            tasks:
+              - title: "Bilan {{project_name}}"
+                description: "Avant le {{ end_date }}"
+                subtasks:
+                  - title: "{{project_name}} : relire"
+            """
+        )
+    )
+    assert t.tasks[0].title == "Bilan {{project_name}}"
+
+
+@pytest.mark.parametrize("text", ["{{ nope }}", "{{project}}", "{{ Project_Name }}"])
+def test_unknown_variable_is_rejected(text):
+    with pytest.raises(TemplateError, match=r"tasks\[0\].*unknown variable"):
+        parse_template(f"version: 1\nname: X\ntasks:\n  - title: {text!r}\n")
+
+
+def test_unknown_variable_in_subtask_description():
+    body = tpl(
+        """\
+        version: 1
+        name: X
+        tasks:
+          - title: A
+            subtasks:
+              - title: B
+                description: "{{ who }}"
+        """
+    )
+    with pytest.raises(TemplateError, match=r"tasks\[0\]\.subtasks\[0\]"):
+        parse_template(body)
+
+
+def test_end_date_variable_requires_end_date_section():
+    with pytest.raises(TemplateError, match="end_date"):
+        parse_template("version: 1\nname: X\ntasks:\n  - title: 'Le {{end_date}}'\n")
+
+
+def test_render_text():
+    from kaneo_templates.schema import render_text
+
+    values = {"project_name": "Gala", "end_date": "24/03/2027"}
+    assert render_text("{{project_name}} - {{ end_date }}", values) == "Gala - 24/03/2027"
+    assert render_text("{single} {{}} {{{x", values) == "{single} {{}} {{{x"
+    assert render_text("{{project_name}}{{project_name}}", values) == "GalaGala"

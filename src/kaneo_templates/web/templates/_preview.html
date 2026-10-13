@@ -37,7 +37,7 @@
           <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
             {% if item.due %}
               <span class="chip {{ 'border-due-overdue/40 text-due-overdue' if item.past else '' }}">
-                {{ m.icon("calendar", "size-3 text-chip-icon") }}<span class="tabular-nums">{{ t("weekdays").split()[item.due.weekday()] }} {{ item.due.strftime("%d/%m/%Y") }}</span>
+                {{ m.icon("calendar", "size-3 text-chip-icon") }}<span class="tabular-nums">{{ t("weekdays").split()[item.due.weekday()] }} {{ item.due.strftime(t("date_format")) }}</span>
               </span>
             {% else %}
               <span class="chip text-chip-muted">{{ m.icon("calendar", "size-3 text-chip-icon") }}{{ t("no_due") }}</span>

@@ -19,6 +19,7 @@ tasks:
   - title: Réserver la salle ou la visioconférence
     due: -14d
   - title: Rédiger le procès-verbal
+    description: "Réunion du {{end_date}}"
     due: +5b
     subtasks:
       - title: Faire relire par le secrétaire

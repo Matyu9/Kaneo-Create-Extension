@@ -167,7 +167,7 @@ async def run(fake_kwargs=None, template=EVENT, end=date(2030, 6, 14), name="Sum
     with respx.mock(base_url=BASE) as mock:
         fake = FakeKaneo(mock, **(fake_kwargs or {}))
         async with KaneoClient(BASE, "tok") as client:
-            plan = build_plan(template, end, today=date(2030, 1, 1))
+            plan = build_plan(template, end, today=date(2030, 1, 1), project_name=name)
             report = await Creator(client, PUBLIC).run("w1", template, name, plan)
     return fake, report
 
@@ -440,3 +440,39 @@ async def test_existing_labels_keep_their_color():
     fake, _ = await run({"existing_labels": ["logistics"]}, template=COLORED, end=None)
     assert [b["name"] for m, p, b in fake.writes if p == "label"] == ["team"]
     assert not [p for m, p, b in fake.writes if m == "PUT" and p == "label/lbl-logistics"]
+
+
+VARS = parse_template(
+    """\
+version: 1
+name: Vars
+end_date:
+  required: false
+tasks:
+  - title: "Affiche {{project_name}}"
+    description: "Date : {{end_date}}"
+    subtasks:
+      - title: "{{ project_name }} / impression"
+"""
+)
+
+
+def test_plan_renders_variables():
+    plan = build_plan(VARS, date(2027, 3, 24), date(2027, 1, 1), project_name="Gala")
+    assert [i.title for i in plan.items] == ["Affiche Gala", "Gala / impression"]
+    assert plan.items[0].description == "Date : 24/03/2027"
+
+
+def test_plan_variables_date_format_and_missing_date():
+    plan = build_plan(VARS, date(2027, 3, 24), date(2027, 1, 1), date_format="%Y-%m-%d")
+    assert plan.items[0].description == "Date : 2027-03-24"
+    assert plan.items[0].title == "Affiche "
+    plan = build_plan(VARS, None, date(2027, 1, 1), project_name="Gala")
+    assert plan.items[0].description == "Date : "
+
+
+async def test_creation_sends_rendered_titles():
+    fake, _ = await run(template=VARS, end=date(2027, 3, 24), name="Gala")
+    tasks = [b for m, p, b in fake.writes if p == "task/p1"]
+    assert [b["title"] for b in tasks] == ["Affiche Gala", "Gala / impression"]
+    assert tasks[0]["description"] == "Date : 24/03/2027"

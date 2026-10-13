@@ -82,6 +82,10 @@ def _signed_out(request: Request) -> Response:
     return response
 
 
+def _date_format(request: Request) -> str:
+    return translator(_settings(request).app_lang)("date_format")
+
+
 def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
@@ -157,13 +161,16 @@ async def preview(
     if selected is None:
         return _render(request, "_preview.html", plan=None)
     end = _parse_date(end_date) if selected.end_date else None
-    plan = build_plan(selected, end, date.today())
+    name = name.strip()[:MAX_NAME_LENGTH]
+    plan = build_plan(
+        selected, end, date.today(), project_name=name, date_format=_date_format(request)
+    )
     return _render(
         request,
         "_preview.html",
         plan=plan,
         board=plan_board(plan),
-        key=project_key(name.strip()[:MAX_NAME_LENGTH]),
+        key=project_key(name),
         template=selected,
         default_label_color=DEFAULT_LABEL_COLOR,
     )
@@ -220,7 +227,9 @@ async def create(
         if errors or selected is None:
             return _render(request, "_result.html", errors=errors, report=None)
 
-        plan = build_plan(selected, end, date.today())
+        plan = build_plan(
+            selected, end, date.today(), project_name=name, date_format=_date_format(request)
+        )
         report = await Creator(kaneo, settings.kaneo_public_url).run(
             workspace_id, selected, name, plan
         )

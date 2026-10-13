@@ -123,6 +123,7 @@ Champs :
   - `labels` : noms de labels du workspace. Un label absent est créé avec une couleur par défaut.
   - `due` : décalage par rapport à la date de fin.
   - `subtasks[]` : mêmes champs, un seul niveau de profondeur.
+  - `title` et `description` acceptent les variables `{{project_name}}` et `{{end_date}}` (voir `docs/templates.md`).
 
 Syntaxe de `due` :
 
@@ -271,7 +272,6 @@ Critère de fin de v1 : depuis une instance Kaneo vierge, un utilisateur lance l
 ## 13. Pour plus tard
 
 - Éditeur de modèles dans l'UI, import et export de modèles.
-- Variables dans les titres et descriptions (`{{project_name}}`, `{{end_date}}`).
 - Jours fériés par pays pour les jours ouvrés.
 - Date de début de projet comme second point d'ancrage.
 - Attribution des tâches par rôle, associée à des membres choisis à la création.

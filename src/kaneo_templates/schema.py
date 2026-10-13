@@ -64,6 +64,20 @@ def _parse_color(value: object) -> object:
 
 LabelColor = Annotated[str, BeforeValidator(_parse_color)]
 
+# Placeholders allowed in task titles and descriptions. Substitution is plain text
+# replacement, never template evaluation.
+VARIABLES = ("project_name", "end_date")
+_VARIABLE = re.compile(r"\{\{\s*([^{}]*?)\s*\}\}")
+
+
+def render_text(text: str, values: dict[str, str]) -> str:
+    """Replace `{{ name }}` placeholders; names are checked when the template loads."""
+    return _VARIABLE.sub(lambda m: values.get(m.group(1), m.group(0)), text)
+
+
+def _variables(text: str | None) -> list[str]:
+    return _VARIABLE.findall(text) if text else []
+
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -135,6 +149,13 @@ class Template(_Strict):
     def _cross_checks(self) -> Template:
         known_slugs = {column_slug(c) for c in self.columns} if self.columns else None
         for path, item in self.iter_items():
+            for name in _variables(item.title) + _variables(item.description):
+                if name not in VARIABLES:
+                    raise ValueError(
+                        f"{path}: unknown variable (available: {', '.join(VARIABLES)})"
+                    )
+                if name == "end_date" and self.end_date is None:
+                    raise ValueError(f"{path}: {{{{end_date}}}} requires an 'end_date' section")
             if item.due is not None and self.end_date is None:
                 raise ValueError(f"{path}: 'due' requires an 'end_date' section in the template")
             if (

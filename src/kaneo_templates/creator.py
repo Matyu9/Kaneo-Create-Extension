@@ -15,7 +15,7 @@ from datetime import date
 
 from kaneo_templates.kaneo_client import Column, KaneoAuthError, KaneoClient, KaneoError
 from kaneo_templates.scheduling import compute_due, is_weekend
-from kaneo_templates.schema import SubtaskSpec, Template, column_slug
+from kaneo_templates.schema import SubtaskSpec, Template, column_slug, render_text
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +59,29 @@ class Plan:
         return [i for i in self.items if i.is_subtask]
 
 
-def build_plan(template: Template, end_date: date | None, today: date) -> Plan:
+def build_plan(
+    template: Template,
+    end_date: date | None,
+    today: date,
+    *,
+    project_name: str = "",
+    date_format: str = "%d/%m/%Y",
+) -> Plan:
     columns = list(template.columns) if template.columns else list(KANEO_DEFAULT_COLUMNS)
     items: list[PlannedItem] = []
     warnings: list[str] = []
+    values = {
+        "project_name": project_name,
+        "end_date": end_date.strftime(date_format) if end_date else "",
+    }
     for i, task in enumerate(template.tasks):
-        parent = _planned(f"tasks[{i}]", task, None, end_date, today)
+        parent = _planned(f"tasks[{i}]", task, None, end_date, today, values)
         items.append(parent)
         parent_index = len(items) - 1
         for j, sub in enumerate(task.subtasks):
-            child = _planned(f"tasks[{i}].subtasks[{j}]", sub, parent_index, end_date, today)
+            child = _planned(
+                f"tasks[{i}].subtasks[{j}]", sub, parent_index, end_date, today, values
+            )
             if child.column is None:
                 child.column = parent.column
             items.append(child)
@@ -80,13 +93,18 @@ def build_plan(template: Template, end_date: date | None, today: date) -> Plan:
 
 
 def _planned(
-    path: str, spec: SubtaskSpec, parent: int | None, end: date | None, today: date
+    path: str,
+    spec: SubtaskSpec,
+    parent: int | None,
+    end: date | None,
+    today: date,
+    values: dict[str, str],
 ) -> PlannedItem:
     due = compute_due(end, spec.due)
     return PlannedItem(
         path=path,
-        title=spec.title,
-        description=spec.description,
+        title=render_text(spec.title, values),
+        description=render_text(spec.description, values) if spec.description else None,
         priority=spec.priority,
         column=spec.column,
         labels=list(spec.labels),
