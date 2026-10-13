@@ -115,10 +115,12 @@ Champs :
 - `version` : entier, `1` pour cette spécification. Un modèle avec une version inconnue est refusé.
 - `name` : requis. `description` : facultatif.
 - `end_date` : facultatif. Si absent, le champ date n'apparaît pas dans l'UI et aucune tâche ne peut avoir de `due`. `required: true` rend la saisie obligatoire. `required: false` laisse le choix : sans date, les tâches avec `due` sont créées sans échéance. `label` personnalise le libellé du champ.
-- `columns` : facultatif. Présent : les colonnes sont créées dans le projet. Absent : les colonnes par défaut de Kaneo sont conservées. C'est ainsi que le choix est laissé à l'auteur du modèle.
+- `columns` : facultatif. Présent : les colonnes du modèle remplacent les quatre colonnes que Kaneo crée avec tout projet (`To Do`, `In Progress`, `In Review`, `Done`), dans l'ordre du modèle ; la dernière est marquée comme colonne finale (`isFinal`). Absent : les colonnes par défaut de Kaneo sont conservées. C'est ainsi que le choix est laissé à l'auteur du modèle. Chaque nom doit donner un slug Kaneo non vide, distinct des autres et différent de `planned` et `archived` (voir `docs/kaneo-api-notes.md` §5).
 - `tasks[]` :
   - `title` requis.
-  - `description`, `priority` (valeurs de Kaneo), `column` (doit exister dans `columns` ou dans les colonnes du projet), `labels` : facultatifs.
+  - `description`, `priority` (`no-priority`, `low`, `medium`, `high`, `urgent` ; défaut `no-priority`), `column`, `labels` : facultatifs.
+  - `column` : si le modèle définit `columns`, doit y figurer (vérifié au chargement). Sinon, résolu à la création contre les colonnes réelles du projet (nom ou slug) ; une colonne introuvable place la tâche dans la première colonne avec un avertissement.
+  - `labels` : noms de labels du workspace. Un label absent est créé avec une couleur par défaut.
   - `due` : décalage par rapport à la date de fin.
   - `subtasks[]` : mêmes champs, un seul niveau de profondeur.
 
@@ -156,14 +158,14 @@ Interface disponible en français et en anglais via un dictionnaire de traductio
 
 1. Valider les entrées côté serveur : workspace, modèle existant (identifiant pris dans la liste chargée, jamais dans un chemin fourni par le client), nom non vide, date présente si requise.
 2. Calculer toutes les échéances (fonction pure, testée seule).
-3. Créer le projet dans le workspace.
-4. Si le modèle définit `columns`, créer les colonnes ; sinon lire celles du projet.
-5. Résoudre les `labels` : récupérer les labels du workspace, créer ceux qui manquent.
-6. Créer les tâches dans l'ordre du modèle, dans leur colonne (la première colonne par défaut).
-7. Créer les sous-tâches et les relier à leur tâche parente.
+3. Créer le projet dans le workspace. Kaneo exige une clé de projet (`slug`, préfixe des identifiants de tâche, unique dans le workspace) et une icône : la clé est dérivée du nom comme le fait l'interface Kaneo, puis rendue unique d'après la liste des projets du workspace ; l'icône est `Layout`.
+4. Lire les colonnes du projet (Kaneo en crée quatre par défaut). Si le modèle définit `columns` : réutiliser une colonne par défaut de même slug, créer les autres, supprimer les colonnes par défaut inutilisées (vides à ce stade), puis réordonner selon le modèle.
+5. Résoudre les `labels` : récupérer les labels du workspace (définitions, sans tâche rattachée), créer ceux qui manquent.
+6. Créer les tâches dans l'ordre du modèle, dans leur colonne (la première colonne par défaut), puis leur attacher leurs labels.
+7. Créer les sous-tâches comme des tâches du projet, puis les relier à leur parente par une relation `subtask` (source : parente, cible : sous-tâche).
 8. Retourner un rapport : éléments créés, avertissements, échecs.
 
-En cas d'erreur à mi-parcours, rien n'est supprimé : le projet reste en place et le rapport indique où l'opération s'est arrêtée. Pas de nouvelle tentative automatique des écritures, pour ne pas créer de doublons ; les lectures peuvent être retentées une fois.
+En cas d'erreur à mi-parcours, rien n'est supprimé : le projet reste en place et le rapport indique où l'opération s'est arrêtée. Pas de nouvelle tentative automatique des écritures, pour ne pas créer de doublons ; les lectures peuvent être retentées une fois. Exception : une réponse `429` (limite de débit des clés API Kaneo, 100 requêtes par minute) signifie que la requête n'a pas été traitée ; elle est rejouée après le délai `Retry-After`, dans une limite de temps globale.
 
 ---
 
@@ -182,6 +184,8 @@ Avant d'écrire le client, lire l'OpenAPI de l'instance cible (`apps/docs/openap
 - device flow : format exact des réponses de `/api/auth/device/code` et `/api/auth/device/token` (succès, `authorization_pending`, `slow_down`, `access_denied`, `expired_token`), durée de vie du token obtenu, existence d'un refresh token (référence : `packages/mcp/src/auth/device-flow.ts` dans le dépôt `usekaneo/kaneo`).
 
 Si un point de ce document contredit la spec (par exemple pas de relation de sous-tâche, ou pas de création de colonne), mettre à jour la spec avant de continuer et signaler l'écart. La version de Kaneo contre laquelle le module a été testé est indiquée dans le README.
+
+Fait : voir `docs/kaneo-api-notes.md` (Kaneo v2.46.2). Les §5 et §7 ont été ajustés en conséquence (clé et icône de projet obligatoires, colonnes par défaut à remplacer, modèle des labels, sens de la relation de sous-tâche, limite de débit des clés API).
 
 ---
 
